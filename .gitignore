@@ -3,6 +3,11 @@
 # dependencies
 node_modules/
 
+# Claude Code
+.claude/
+CLAUDE.md
+AGENTS.md
+
 # Expo
 .expo/
 dist/
@@ -31,7 +36,12 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# Next.js
+.next/
+out/
 
 # typescript
 *.tsbuildinfo
