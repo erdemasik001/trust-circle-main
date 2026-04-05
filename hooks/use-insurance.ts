@@ -1,12 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { useAccount, useReadContract } from "wagmi";
+import { CONTRACTS, INSURANCE_POOL_ABI } from "@/lib/contracts";
 import { MOCK_SYSTEM_HEALTH } from "@/constants/mock-data";
-
-// Toggle between mock and real (wagmi) data
-const USE_MOCK = true;
-
-// ─── Types ──────────────────────────────────────────────────
 
 export interface UseInsuranceReturn {
   poolBalance: number;
@@ -16,34 +13,37 @@ export interface UseInsuranceReturn {
   isLoading: boolean;
 }
 
-// ─── Hook ───────────────────────────────────────────────────
-
 export function useInsurance(): UseInsuranceReturn {
-  // TODO: wagmi read hooks for real mode
-  // const { data: poolBalance, isLoading: l1 } = useReadContract({ ... });
-  // const { data: totalContributions, isLoading: l2 } = useReadContract({ ... });
+  const { isConnected } = useAccount();
 
-  const mockData = useMemo<UseInsuranceReturn>(
-    () => ({
-      poolBalance: MOCK_SYSTEM_HEALTH.insurancePoolBalance,
-      totalContributions: MOCK_SYSTEM_HEALTH.totalInsuranceContributions,
-      totalPayouts: MOCK_SYSTEM_HEALTH.totalInsurancePayouts,
-      coverageRate: MOCK_SYSTEM_HEALTH.coverageRate,
-      isLoading: false,
-    }),
-    [],
-  );
+  const { data: stats, isLoading } = useReadContract({
+    address: CONTRACTS.insurancePool,
+    abi: INSURANCE_POOL_ABI,
+    functionName: "getStats",
+    query: { enabled: isConnected },
+  });
 
-  if (USE_MOCK) {
-    return mockData;
-  }
+  return useMemo(() => {
+    if (!isConnected || !stats) {
+      return {
+        poolBalance: MOCK_SYSTEM_HEALTH.insurancePoolBalance,
+        totalContributions: MOCK_SYSTEM_HEALTH.totalInsuranceContributions,
+        totalPayouts: MOCK_SYSTEM_HEALTH.totalInsurancePayouts,
+        coverageRate: MOCK_SYSTEM_HEALTH.coverageRate,
+        isLoading: false,
+      };
+    }
 
-  // Real mode placeholder
-  return {
-    poolBalance: 0,
-    totalContributions: 0,
-    totalPayouts: 0,
-    coverageRate: 30,
-    isLoading: false,
-  };
+    const [balance, contributions, coveragePaid, bountiesPaid] = stats as unknown as [bigint, bigint, bigint, bigint];
+
+    return {
+      poolBalance: Number(balance) / 1e6,
+      totalContributions: Number(contributions) / 1e6,
+      totalPayouts: (Number(coveragePaid) + Number(bountiesPaid)) / 1e6,
+      coverageRate: Number(contributions) > 0
+        ? Math.round((Number(coveragePaid) / Number(contributions)) * 100)
+        : 0,
+      isLoading,
+    };
+  }, [isConnected, stats, isLoading]);
 }

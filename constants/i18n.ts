@@ -33,6 +33,8 @@ export const translations = {
     insurancePool: 'Insurance Pool',
     covered: 'of losses covered',
 
+    recentActivity: 'Recent Activity',
+
     // Tiers
     tierFrozen: 'Frozen',
     tierNewcomer: 'Newcomer',
@@ -101,6 +103,11 @@ export const translations = {
     about: 'About',
     mockDataNote: 'Mock Mode - blockchain not connected',
 
+    // Frozen
+    accountFrozen: 'Account Frozen',
+    accountFrozenDesc: 'Your reputation is below 100. Borrowing is disabled until your score recovers.',
+    cooldownActive: 'Cooldown active',
+
     // Shared
     confirm: 'Confirm',
     cancel: 'Cancel',
@@ -143,6 +150,7 @@ export const translations = {
     systemHealth: 'Sistem Sagligi',
     insurancePool: 'Sigorta Havuzu',
     covered: 'kayiplarin karsiliyor',
+    recentActivity: 'Son Aktiviteler',
 
     tierFrozen: 'Donmus',
     tierNewcomer: 'Caylak',
@@ -207,6 +215,10 @@ export const translations = {
     about: 'Hakkinda',
     mockDataNote: 'Demo Modu - blockchain bagli degil',
 
+    accountFrozen: 'Hesap Donduruldu',
+    accountFrozenDesc: 'Itibar puaniniz 100 un altinda. Puaniniz yükselene kadar borc alamazsiniz.',
+    cooldownActive: 'Bekleme suresi aktif',
+
     confirm: 'Onayla',
     cancel: 'Iptal',
     loading: 'Yukleniyor...',
@@ -247,6 +259,7 @@ export const translations = {
     systemHealth: 'Sante du Systeme',
     insurancePool: 'Pool d Assurance',
     covered: 'des pertes couvertes',
+    recentActivity: 'Activite Recente',
 
     tierFrozen: 'Gele',
     tierNewcomer: 'Debutant',
@@ -311,6 +324,10 @@ export const translations = {
     about: 'A Propos',
     mockDataNote: 'Mode Demo - blockchain non connectee',
 
+    accountFrozen: 'Compte Gele',
+    accountFrozenDesc: 'Votre reputation est inferieure a 100. Les emprunts sont desactives.',
+    cooldownActive: 'Periode de refroidissement active',
+
     confirm: 'Confirmer',
     cancel: 'Annuler',
     loading: 'Chargement...',
@@ -351,6 +368,7 @@ export const translations = {
     systemHealth: 'Salud del Sistema',
     insurancePool: 'Pool de Seguro',
     covered: 'de perdidas cubiertas',
+    recentActivity: 'Actividad Reciente',
 
     tierFrozen: 'Congelado',
     tierNewcomer: 'Principiante',
@@ -414,6 +432,10 @@ export const translations = {
     darkMode: 'Modo Oscuro',
     about: 'Acerca de',
     mockDataNote: 'Modo Demo - blockchain no conectada',
+
+    accountFrozen: 'Cuenta Congelada',
+    accountFrozenDesc: 'Tu reputacion esta por debajo de 100. Los prestamos estan desactivados.',
+    cooldownActive: 'Periodo de enfriamiento activo',
 
     confirm: 'Confirmar',
     cancel: 'Cancelar',

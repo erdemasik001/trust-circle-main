@@ -1,12 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { useAccount, useReadContract } from "wagmi";
+import { CONTRACTS, CIRCUIT_BREAKER_ABI } from "@/lib/contracts";
 import { MOCK_SYSTEM_HEALTH, type SystemHealthStatus } from "@/constants/mock-data";
-
-// Toggle between mock and real (wagmi) data
-const USE_MOCK = true;
-
-// ─── Types ──────────────────────────────────────────────────
 
 export interface UseCircuitBreakerReturn {
   health: SystemHealthStatus;
@@ -16,39 +13,58 @@ export interface UseCircuitBreakerReturn {
   isLoading: boolean;
 }
 
-// ─── Helpers ────────────────────────────────────────────────
-
-function canCreateLoanForHealth(status: SystemHealthStatus): boolean {
-  return status === "GREEN" || status === "YELLOW";
-}
-
-// ─── Hook ───────────────────────────────────────────────────
+const healthMap: Record<number, SystemHealthStatus> = {
+  0: "GREEN",
+  1: "YELLOW",
+  2: "RED",
+  3: "RECOVERY",
+};
 
 export function useCircuitBreaker(): UseCircuitBreakerReturn {
-  // TODO: wagmi read hooks for real mode
-  // const { data: cbState, isLoading } = useReadContract({ ... });
+  const { isConnected } = useAccount();
 
-  const mockData = useMemo<UseCircuitBreakerReturn>(
-    () => ({
-      health: MOCK_SYSTEM_HEALTH.status,
-      canCreateLoan: canCreateLoanForHealth(MOCK_SYSTEM_HEALTH.status),
-      activeLoans: MOCK_SYSTEM_HEALTH.activeLoansCount,
-      defaultRate: MOCK_SYSTEM_HEALTH.defaultRate,
-      isLoading: false,
-    }),
-    [],
-  );
+  const { data: healthRaw, isLoading: healthLoading } = useReadContract({
+    address: CONTRACTS.circuitBreaker,
+    abi: CIRCUIT_BREAKER_ABI,
+    functionName: "getHealth",
+    query: { enabled: isConnected },
+  });
 
-  if (USE_MOCK) {
-    return mockData;
-  }
+  const { data: canCreate, isLoading: canCreateLoading } = useReadContract({
+    address: CONTRACTS.circuitBreaker,
+    abi: CIRCUIT_BREAKER_ABI,
+    functionName: "canCreateLoan",
+    query: { enabled: isConnected },
+  });
 
-  // Real mode placeholder
-  return {
-    health: "GREEN",
-    canCreateLoan: true,
-    activeLoans: 0,
-    defaultRate: 0,
-    isLoading: false,
-  };
+  const { data: statsRaw } = useReadContract({
+    address: CONTRACTS.circuitBreaker,
+    abi: CIRCUIT_BREAKER_ABI,
+    functionName: "getStats",
+    query: { enabled: isConnected },
+  });
+
+  return useMemo(() => {
+    if (!isConnected || healthRaw === undefined) {
+      return {
+        health: MOCK_SYSTEM_HEALTH.status,
+        canCreateLoan: true,
+        activeLoans: MOCK_SYSTEM_HEALTH.activeLoansCount,
+        defaultRate: MOCK_SYSTEM_HEALTH.defaultRate,
+        isLoading: false,
+      };
+    }
+
+    const stats = statsRaw as unknown as [bigint, bigint, bigint, bigint] | undefined;
+
+    return {
+      health: healthMap[Number(healthRaw)] ?? "GREEN",
+      canCreateLoan: canCreate as boolean ?? true,
+      activeLoans: stats ? Number(stats[0]) : 0,
+      defaultRate: stats && Number(stats[1]) > 0
+        ? Math.round((Number(stats[2]) / Number(stats[1])) * 100 * 10) / 10
+        : 0,
+      isLoading: healthLoading || canCreateLoading,
+    };
+  }, [isConnected, healthRaw, canCreate, statsRaw, healthLoading, canCreateLoading]);
 }

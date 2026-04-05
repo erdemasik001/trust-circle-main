@@ -3,10 +3,6 @@
 # dependencies
 node_modules/
 
-# Claude Code
-.claude/
-CLAUDE.md
-AGENTS.md
 
 # Expo
 .expo/
@@ -38,6 +34,7 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+
 
 # Next.js
 .next/

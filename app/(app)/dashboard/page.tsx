@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { BadgeCheck, HandCoins, Shield, ArrowUpRight, Activity, CreditCard, TrendingUp, CircleDollarSign, Heart } from "lucide-react";
+import { BadgeCheck, HandCoins, Shield, ArrowUpRight, Activity, CreditCard, TrendingUp, CircleDollarSign, Heart, Snowflake, Gavel, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress, ProgressTrack, ProgressIndicator } from "@/components/ui/progress";
 import { ProfileCard } from "@/components/dashboard/profile-card";
+import { WalletButton } from "@/components/shared/wallet-button";
 import { useLanguage } from "@/contexts/language-context";
 import { useTrustCircle } from "@/hooks/use-trust-circle";
 import { useReputation } from "@/hooks/use-reputation";
@@ -23,8 +26,11 @@ const activityIcons: Record<string, typeof Activity> = {
 
 export default function DashboardPage() {
   const { t } = useLanguage();
-  const { userProfile, activeLoan, availableLimit, vouchesReceived, isLoading } = useTrustCircle();
-  const { currentTier: tier, nextTier, progress: tierProgress, tierColor } = useReputation(userProfile?.reputationScore ?? 0);
+  const { userProfile, activeLoan, availableLimit, vouchesReceived, isLoading, actions } = useTrustCircle();
+  const [liquidateAddr, setLiquidateAddr] = useState("");
+  const [liquidating, setLiquidating] = useState(false);
+  const [showLiquidate, setShowLiquidate] = useState(false);
+  const { currentTier: tier, nextTier, progress: tierProgress, tierColor, isFrozen } = useReputation(userProfile?.reputationScore ?? 0);
   const insurance = useInsurance();
   const circuitBreaker = useCircuitBreaker();
 
@@ -43,19 +49,31 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-5 px-4 pt-6 pb-4">
       {/* Greeting */}
-      <div className="flex items-center gap-2">
-        <h1 className="text-xl font-bold tracking-tight">
-          {t.hello} {userProfile?.ensName}
-        </h1>
-        {userProfile?.verified && <BadgeCheck className="h-5 w-5 text-blue-500" />}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-tight">
+            {t.hello} {userProfile?.ensName?.split(".")[0]}
+          </h1>
+          {userProfile?.verified && <BadgeCheck className="h-5 w-5 text-blue-500" />}
+        </div>
+        <WalletButton />
       </div>
 
-      {/* Mock Mode Banner */}
-      <div className="rounded-lg border border-yellow-300/50 bg-yellow-50 px-3 py-2 dark:border-yellow-700/50 dark:bg-yellow-950/30">
-        <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">
-          {t.mockDataNote}
-        </p>
-      </div>
+      {/* Frozen Account Warning */}
+      {(isFrozen || userProfile?.isFrozen) && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
+          <Snowflake className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+          <div>
+            <p className="text-sm font-semibold text-red-700 dark:text-red-400">{t.accountFrozen}</p>
+            <p className="mt-0.5 text-xs text-red-600/80 dark:text-red-400/70">{t.accountFrozenDesc}</p>
+            {userProfile?.defaultCooldownUntil && userProfile.defaultCooldownUntil > Date.now() / 1000 && (
+              <p className="mt-1.5 font-mono text-[10px] text-red-500">
+                {t.cooldownActive}: {Math.ceil((userProfile.defaultCooldownUntil - Date.now() / 1000) / 86400)} {t.days}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Profile Card */}
       <ProfileCard
@@ -146,46 +164,102 @@ export default function DashboardPage() {
       )}
 
       {/* System Health Badge */}
-      <div className="flex items-center justify-between rounded-xl border p-3">
+      <div className="flex items-center justify-between rounded-xl border bg-muted/30 p-3">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">{t.systemHealth}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${healthColors[circuitBreaker.health]}`}>
+        <div className="flex items-center gap-3">
+          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${healthColors[circuitBreaker.health]}`}>
             {circuitBreaker.health}
           </span>
           <span className="text-xs text-muted-foreground">
-            {t.insurancePool}: ${insurance.poolBalance.toLocaleString()}
+            Pool: ${insurance.poolBalance.toLocaleString()}
           </span>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-2">
         <Link href="/borrow">
-          <Button variant="outline" className="flex h-auto w-full flex-col gap-1.5 py-4">
-            <HandCoins className="h-5 w-5 text-blue-500" />
-            <span className="text-xs font-medium">{t.borrow}</span>
-          </Button>
+          <div className="flex h-auto w-full flex-col items-center gap-2 rounded-xl border bg-gradient-to-b from-blue-50 to-transparent py-4 transition-colors hover:border-blue-200 dark:from-blue-950/30 dark:hover:border-blue-800">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500/10">
+              <HandCoins className="h-4.5 w-4.5 text-blue-500" />
+            </div>
+            <span className="text-[10px] font-medium">{t.borrow}</span>
+          </div>
         </Link>
         <Link href="/vouch">
-          <Button variant="outline" className="flex h-auto w-full flex-col gap-1.5 py-4">
-            <Shield className="h-5 w-5 text-green-500" />
-            <span className="text-xs font-medium">{t.vouch}</span>
-          </Button>
+          <div className="flex h-auto w-full flex-col items-center gap-2 rounded-xl border bg-gradient-to-b from-green-50 to-transparent py-4 transition-colors hover:border-green-200 dark:from-green-950/30 dark:hover:border-green-800">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500/10">
+              <Shield className="h-4.5 w-4.5 text-green-500" />
+            </div>
+            <span className="text-[10px] font-medium">{t.vouch}</span>
+          </div>
         </Link>
         <Link href="/repay">
-          <Button variant="outline" className="flex h-auto w-full flex-col gap-1.5 py-4">
-            <ArrowUpRight className="h-5 w-5 text-violet-500" />
-            <span className="text-xs font-medium">{t.repay}</span>
-          </Button>
+          <div className="flex h-auto w-full flex-col items-center gap-2 rounded-xl border bg-gradient-to-b from-violet-50 to-transparent py-4 transition-colors hover:border-violet-200 dark:from-violet-950/30 dark:hover:border-violet-800">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/10">
+              <ArrowUpRight className="h-4.5 w-4.5 text-violet-500" />
+            </div>
+            <span className="text-[10px] font-medium">{t.repay}</span>
+          </div>
         </Link>
+        <button onClick={() => setShowLiquidate(!showLiquidate)}>
+          <div className="flex h-auto w-full flex-col items-center gap-2 rounded-xl border bg-gradient-to-b from-red-50 to-transparent py-4 transition-colors hover:border-red-200 dark:from-red-950/30 dark:hover:border-red-800">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-500/10">
+              <Gavel className="h-4.5 w-4.5 text-red-500" />
+            </div>
+            <span className="text-[10px] font-medium">Liquidate</span>
+          </div>
+        </button>
       </div>
 
+      {/* Liquidation Section */}
+      {showLiquidate && (
+        <Card className="border-red-200 dark:border-red-900">
+          <CardContent className="pt-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Gavel className="h-4 w-4 text-red-500" />
+                <span className="text-sm font-semibold">Liquidate Defaulted Loan</span>
+              </div>
+              <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowLiquidate(false)}>Close</Button>
+            </div>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Enter the borrower address of a defaulted loan past grace period. You earn a liquidation bounty (1-5%).
+            </p>
+            <Input
+              value={liquidateAddr}
+              onChange={(e) => setLiquidateAddr(e.target.value)}
+              placeholder="0x... borrower address"
+              className="mb-3 font-mono text-xs"
+            />
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              disabled={!liquidateAddr.startsWith("0x") || liquidateAddr.length < 42 || liquidating}
+              onClick={async () => {
+                setLiquidating(true);
+                try {
+                  await actions.liquidate(liquidateAddr);
+                  setLiquidateAddr("");
+                  setShowLiquidate(false);
+                } finally {
+                  setLiquidating(false);
+                }
+              }}
+            >
+              {liquidating ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing...</> : "Liquidate"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Recent Activity */}
-      <div>
-        <h2 className="mb-3 text-sm font-semibold">Recent Activity</h2>
+      <div className="pb-2">
+        <h2 className="mb-3 text-sm font-semibold">{t.recentActivity}</h2>
         <div className="flex flex-col gap-2">
           {MOCK_RECENT_ACTIVITY.map((item) => {
             const Icon = activityIcons[item.type] ?? Activity;

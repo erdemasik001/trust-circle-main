@@ -33,12 +33,16 @@ export function ProfileCard({
   tierColor,
 }: ProfileCardProps) {
   return (
-    <div className="rounded-2xl bg-[#1A1A1A] p-5">
-      <div className="flex items-center gap-4">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1A1A2E] via-[#16213E] to-[#0F3460] p-5">
+      {/* Decorative background circles */}
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl" />
+      <div className="absolute -left-4 -bottom-4 h-20 w-20 rounded-full bg-violet-500/10 blur-2xl" />
+
+      <div className="relative flex items-center gap-4">
         {/* Avatar */}
         <div
-          className="flex size-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-          style={{ backgroundColor: `${tierColor}33` }}
+          className="flex size-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ring-2 ring-white/10"
+          style={{ backgroundColor: `${tierColor}44` }}
         >
           {getInitials(ensName)}
         </div>
@@ -53,7 +57,7 @@ export function ProfileCard({
               <BadgeCheck className="size-4 shrink-0 text-blue-400" />
             )}
           </div>
-          <span className="font-mono text-xs text-zinc-500">
+          <span className="font-mono text-xs text-zinc-400">
             {truncateAddress(address)}
           </span>
         </div>
@@ -63,9 +67,9 @@ export function ProfileCard({
       </div>
 
       {/* Tier badge row */}
-      <div className="mt-4 flex items-center justify-between">
+      <div className="relative mt-4 flex items-center justify-between">
         <TierBadge tierName={tierName} size="sm" />
-        <span className="text-xs text-zinc-500">
+        <span className="text-xs text-zinc-400">
           Rep Score: {reputationScore} / 1000
         </span>
       </div>

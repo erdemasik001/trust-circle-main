@@ -7,8 +7,9 @@ import { HandCoins, Shield, TrendingUp, CheckCircle2, Loader2 } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/language-context";
-import { useMiniKit } from "@/hooks/use-minikit";
+import { useWorldMiniKit } from "@/hooks/use-minikit";
 import { useENS } from "@/hooks/use-ens";
+import { useTrustCircle } from "@/hooks/use-trust-circle";
 
 const slides = [
   {
@@ -40,9 +41,11 @@ export default function OnboardingPage() {
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [ensInput, setEnsInput] = useState("");
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
-  const minikit = useMiniKit();
+  const minikit = useWorldMiniKit();
   const ens = useENS();
+  const { actions } = useTrustCircle();
 
   const handleNext = () => {
     if (currentStep < TOTAL_STEPS - 1) {
@@ -57,13 +60,37 @@ export default function OnboardingPage() {
   const handleVerify = async () => {
     setVerifying(true);
     try {
+      // Step 1: Get World ID proof via MiniKit
       const result = await minikit.verify();
-      if (result.success) {
-        setVerified(true);
-        setTimeout(() => setCurrentStep(4), 800);
-      }
-    } catch {
-      // verification failed
+      if (!result.success) throw new Error("MiniKit verification failed");
+
+      // Step 2: Verify proof server-side
+      const verifyRes = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merkle_root: result.merkle_root,
+          nullifier_hash: result.nullifier_hash,
+          proof: result.proof,
+          verification_level: result.verification_level,
+        }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyData.success) throw new Error(verifyData.error ?? "Server verification failed");
+
+      // Step 3: Register on-chain with the proof
+      await actions.register({
+        merkle_root: result.merkle_root,
+        nullifier_hash: result.nullifier_hash,
+        proof: result.proof,
+        verification_level: result.verification_level,
+      });
+
+      setVerified(true);
+      setTimeout(() => setCurrentStep(4), 800);
+    } catch (err) {
+      console.error("[Onboarding] Verify error:", err);
+      setVerifyError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setVerifying(false);
     }
@@ -156,21 +183,26 @@ export default function OnboardingPage() {
                   : t.disclaimer}
               </p>
               {!verified && (
-                <Button
-                  onClick={handleVerify}
-                  disabled={verifying}
-                  className="w-full max-w-xs"
-                  size="lg"
-                >
-                  {verifying ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    t.verifyWithWorldId
+                <>
+                  <Button
+                    onClick={() => { setVerifyError(null); handleVerify(); }}
+                    disabled={verifying}
+                    className="w-full max-w-xs"
+                    size="lg"
+                  >
+                    {verifying ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      t.verifyWithWorldId
+                    )}
+                  </Button>
+                  {verifyError && (
+                    <p className="mt-3 text-sm text-red-500">{verifyError}</p>
                   )}
-                </Button>
+                </>
               )}
             </motion.div>
           )}

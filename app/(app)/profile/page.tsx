@@ -14,6 +14,7 @@ import {
   Info,
   ChevronRight,
   History,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress, ProgressTrack, ProgressIndicator } from "@/components/ui/progress";
 import { TierBadge } from "@/components/shared/tier-badge";
 import { useLanguage } from "@/contexts/language-context";
+import { useWalletAuth } from "@/contexts/wallet-auth-context";
 import { useTrustCircle } from "@/hooks/use-trust-circle";
 import { useReputation } from "@/hooks/use-reputation";
 import { useENS } from "@/hooks/use-ens";
@@ -47,29 +49,37 @@ export default function ProfilePage() {
   const { t, language, setLanguage } = useLanguage();
   const [darkMode, setDarkMode] = useState(false);
 
-  const { userProfile, vouchesReceived, vouchesGiven } = useTrustCircle();
+  const { isAuthenticated } = useWalletAuth();
+  const { userProfile, vouchesReceived, vouchesGiven, actions } = useTrustCircle();
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const { currentTier: tier, nextTier, progress: tierProgress, tierColor } = useReputation(userProfile?.reputationScore ?? 0);
-  const { ensName } = useENS();
+  const { ensName, setTextRecord } = useENS();
+  const [updatingENS, setUpdatingENS] = useState(false);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle("dark");
   };
 
+  const handleUpdateENSProfile = async () => {
+    if (!isAuthenticated || !userProfile) return;
+    setUpdatingENS(true);
+    try {
+      await setTextRecord("reputation", String(userProfile.reputationScore));
+      await setTextRecord("tier", tier.name);
+      await setTextRecord("description", `Trust Circle ${tier.name} | Rep: ${userProfile.reputationScore}`);
+    } finally {
+      setUpdatingENS(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-5 px-4 pt-6 pb-4">
-      {/* Mock Mode Banner */}
-      <div className="rounded-lg border border-yellow-300/50 bg-yellow-50 px-3 py-2 dark:border-yellow-700/50 dark:bg-yellow-950/30">
-        <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">
-          {t.mockDataNote}
-        </p>
-      </div>
-
       {/* Profile Header */}
       <div className="flex flex-col items-center gap-3 py-4">
         <div
-          className="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white"
-          style={{ backgroundColor: `${tierColor}66` }}
+          className="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white ring-4 ring-offset-2 ring-offset-background"
+          style={{ backgroundColor: `${tierColor}88`, borderColor: tierColor, boxShadow: `0 0 20px ${tierColor}33` }}
         >
           {(ensName ?? userProfile?.ensName ?? "??").slice(0, 2).toUpperCase()}
         </div>
@@ -108,6 +118,23 @@ export default function ProfilePage() {
                 {nextTier.minRep - (userProfile?.reputationScore ?? 0)} points to {nextTier.name}
               </p>
             </>
+          )}
+
+          {/* Update ENS Profile */}
+          {isAuthenticated && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 w-full gap-1.5 text-xs"
+              onClick={handleUpdateENSProfile}
+              disabled={updatingENS}
+            >
+              {updatingENS ? (
+                <><Loader2 className="h-3 w-3 animate-spin" /> Updating ENS...</>
+              ) : (
+                <><Globe className="h-3 w-3" /> Sync Rep to ENS Profile</>
+              )}
+            </Button>
           )}
         </CardContent>
       </Card>
@@ -213,11 +240,31 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-mono text-sm font-medium">${v.amount}</p>
-                <span className={`text-xs ${v.isActive ? "text-green-600" : "text-muted-foreground"}`}>
-                  {v.isActive ? "Active" : "Pending"}
-                </span>
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <p className="font-mono text-sm font-medium">${v.amount}</p>
+                  <span className={`text-xs ${v.isActive ? "text-green-600" : "text-muted-foreground"}`}>
+                    {v.isActive ? "Active" : "Pending"}
+                  </span>
+                </div>
+                {v.direction === "given" && v.isActive && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    disabled={revokingId === v.id}
+                    onClick={async () => {
+                      setRevokingId(v.id);
+                      try {
+                        await actions.revokeVouch(v.voucher.address);
+                      } finally {
+                        setRevokingId(null);
+                      }
+                    }}
+                  >
+                    {revokingId === v.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Revoke"}
+                  </Button>
+                )}
               </div>
             </div>
           ))}

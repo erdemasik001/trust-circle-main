@@ -21,3 +21,25 @@ export const worldChainSepolia = defineChain({
   },
   testnet: true,
 });
+
+export const arcTestnet = defineChain({
+  id: 5042002,
+  name: 'Arc Testnet',
+  nativeCurrency: {
+    decimals: 6,
+    name: 'USDC',
+    symbol: 'USDC',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.testnet.arc.network'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Arc Explorer',
+      url: 'https://testnet.explorer.arc.network',
+    },
+  },
+  testnet: true,
+});

@@ -1,24 +1,41 @@
 // ============================================================
 // TrustCircle Contract Addresses & ABIs
+// Aligned with deployed Solidity contracts (2026-04-05)
 // ============================================================
 
-// Contract addresses — placeholder values, replace after deployment
+// Contract addresses — World Chain Sepolia (Chain ID: 4801)
 export const CONTRACTS = {
-  trustCircle: '0x...' as `0x${string}`,
-  reputationEngine: '0x...' as `0x${string}`,
-  insurancePool: '0x...' as `0x${string}`,
-  circuitBreaker: '0x...' as `0x${string}`,
-  trustCircleENS: '0x...' as `0x${string}`,
-  mockUSDC: '0x...' as `0x${string}`,
-  mockWorldID: '0x...' as `0x${string}`,
+  trustCircle: '0xB92BABEfb4718697dBAB4262119B643237302fD9' as `0x${string}`,
+  reputationEngine: '0xE98Ebc7ef9B7884228DF8e55883f8A5BcE2F74ff' as `0x${string}`,
+  insurancePool: '0xCb0B77045fDc36c3C10a4c5B7bEa8C55B3aE8960' as `0x${string}`,
+  circuitBreaker: '0xA53acC4059A808fCb83eB242a755c6D32cdbaE63' as `0x${string}`,
+  trustCircleENS: '0x451e7B2E5b06997F72B48ed25A21009307269b01' as `0x${string}`,
+  mockUSDC: '0x461Ed0Ae7525b4f0dAc1697e916e41F96123A307' as `0x${string}`,
+  mockWorldID: '0x54e96Ad2F33aB7E01fFCEB6e6CE97DEE3c8D222D' as `0x${string}`,
 } as const;
 
+// Contract addresses — Arc Testnet (Chain ID: 5042002)
+export const ARC_CONTRACTS = {
+  trustCircle: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  reputationEngine: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  insurancePool: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  circuitBreaker: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  trustCircleENS: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  mockUSDC: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  mockWorldID: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+} as const;
+
+export function getContracts(chainId: number) {
+  if (chainId === 5042002) return ARC_CONTRACTS;
+  return CONTRACTS;
+}
+
 // ============================================================
-// TrustCircle ABI
+// TrustCircle ABI (matches TrustCircle.sol)
 // ============================================================
 
 export const TRUST_CIRCLE_ABI = [
-  // --- Functions ---
+  // ─── Write Functions ─────────────────────────────────────
   {
     type: 'function',
     name: 'registerWithWorldID',
@@ -76,6 +93,43 @@ export const TRUST_CIRCLE_ABI = [
     outputs: [],
     stateMutability: 'nonpayable',
   },
+
+  // ─── Admin Functions ─────────────────────────────────────
+  {
+    type: 'function',
+    name: 'pause',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'unpause',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'transferOwnership',
+    inputs: [
+      { name: 'newOwner', type: 'address', internalType: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'withdrawProtocolFees',
+    inputs: [
+      { name: 'to', type: 'address', internalType: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+
+  // ─── View Functions ──────────────────────────────────────
+  // getUserProfile returns ProfileView struct (9 fields)
   {
     type: 'function',
     name: 'getUserProfile',
@@ -83,26 +137,26 @@ export const TRUST_CIRCLE_ABI = [
       { name: 'user', type: 'address', internalType: 'address' },
     ],
     outputs: [
-      { name: 'userAddress', type: 'address', internalType: 'address' },
-      { name: 'ensName', type: 'string', internalType: 'string' },
-      { name: 'reputationScore', type: 'uint256', internalType: 'uint256' },
-      { name: 'effectiveRep', type: 'uint256', internalType: 'uint256' },
-      { name: 'tierIndex', type: 'uint256', internalType: 'uint256' },
-      { name: 'tierName', type: 'string', internalType: 'string' },
-      { name: 'maxBorrow', type: 'uint256', internalType: 'uint256' },
-      { name: 'interestBps', type: 'uint256', internalType: 'uint256' },
-      { name: 'maxDuration', type: 'uint256', internalType: 'uint256' },
-      { name: 'minVouchers', type: 'uint256', internalType: 'uint256' },
-      { name: 'totalVouchesReceived', type: 'uint256', internalType: 'uint256' },
-      { name: 'totalBorrowed', type: 'uint256', internalType: 'uint256' },
-      { name: 'registeredAt', type: 'uint256', internalType: 'uint256' },
-      { name: 'lastActivityAt', type: 'uint256', internalType: 'uint256' },
-      { name: 'defaultCooldownUntil', type: 'uint256', internalType: 'uint256' },
-      { name: 'activeVouchCount', type: 'uint256', internalType: 'uint256' },
-      { name: 'isFrozen', type: 'bool', internalType: 'bool' },
+      {
+        name: 'p',
+        type: 'tuple',
+        internalType: 'struct TrustCircle.ProfileView',
+        components: [
+          { name: 'isRegistered', type: 'bool', internalType: 'bool' },
+          { name: 'reputationScore', type: 'uint256', internalType: 'uint256' },
+          { name: 'effectiveRep', type: 'uint256', internalType: 'uint256' },
+          { name: 'totalVouchesReceived', type: 'uint256', internalType: 'uint256' },
+          { name: 'totalBorrowed', type: 'uint256', internalType: 'uint256' },
+          { name: 'registeredAt', type: 'uint256', internalType: 'uint256' },
+          { name: 'activeLoan', type: 'uint256', internalType: 'uint256' },
+          { name: 'activeVouchCount', type: 'uint256', internalType: 'uint256' },
+          { name: 'frozen', type: 'bool', internalType: 'bool' },
+        ],
+      },
     ],
     stateMutability: 'view',
   },
+  // getActiveLoan returns 7 fields (NOT a struct, flat tuple)
   {
     type: 'function',
     name: 'getActiveLoan',
@@ -112,16 +166,11 @@ export const TRUST_CIRCLE_ABI = [
     outputs: [
       { name: 'loanId', type: 'uint256', internalType: 'uint256' },
       { name: 'principal', type: 'uint256', internalType: 'uint256' },
-      { name: 'interestRate', type: 'uint256', internalType: 'uint256' },
       { name: 'totalDue', type: 'uint256', internalType: 'uint256' },
       { name: 'amountRepaid', type: 'uint256', internalType: 'uint256' },
-      { name: 'borrowedAt', type: 'uint256', internalType: 'uint256' },
       { name: 'dueDate', type: 'uint256', internalType: 'uint256' },
       { name: 'gracePeriodEnd', type: 'uint256', internalType: 'uint256' },
-      { name: 'status', type: 'uint8', internalType: 'uint8' },
-      { name: 'vouchers', type: 'address[]', internalType: 'address[]' },
-      { name: 'voucherAmounts', type: 'uint256[]', internalType: 'uint256[]' },
-      { name: 'insuranceContribution', type: 'uint256', internalType: 'uint256' },
+      { name: 'status', type: 'uint8', internalType: 'enum TrustCircle.LoanStatus' },
     ],
     stateMutability: 'view',
   },
@@ -154,6 +203,18 @@ export const TRUST_CIRCLE_ABI = [
   },
   {
     type: 'function',
+    name: 'getLoanVouchers',
+    inputs: [
+      { name: 'loanId', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [
+      { name: '', type: 'address[]', internalType: 'address[]' },
+      { name: '', type: 'uint256[]', internalType: 'uint256[]' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'getBorrowerVouchers',
     inputs: [
       { name: 'borrower', type: 'address', internalType: 'address' },
@@ -175,7 +236,30 @@ export const TRUST_CIRCLE_ABI = [
     stateMutability: 'view',
   },
 
-  // --- Events ---
+  // ─── Public State ────────────────────────────────────────
+  {
+    type: 'function',
+    name: 'paused',
+    inputs: [],
+    outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'loanCounter',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'protocolFeeAccumulated',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+
+  // ─── Events ──────────────────────────────────────────────
   {
     type: 'event',
     name: 'UserRegistered',
@@ -193,6 +277,25 @@ export const TRUST_CIRCLE_ABI = [
       { name: 'borrower', type: 'address', indexed: true, internalType: 'address' },
       { name: 'amount', type: 'uint256', indexed: false, internalType: 'uint256' },
       { name: 'activatesAt', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'VouchUpdated',
+    inputs: [
+      { name: 'voucher', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'borrower', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'oldAmount', type: 'uint256', indexed: false, internalType: 'uint256' },
+      { name: 'newAmount', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'VouchRevoked',
+    inputs: [
+      { name: 'voucher', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'borrower', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'amount', type: 'uint256', indexed: false, internalType: 'uint256' },
     ],
   },
   {
@@ -219,11 +322,48 @@ export const TRUST_CIRCLE_ABI = [
   },
   {
     type: 'event',
+    name: 'LateRepayment',
+    inputs: [
+      { name: 'loanId', type: 'uint256', indexed: true, internalType: 'uint256' },
+      { name: 'lateFee', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'YieldDistributed',
+    inputs: [
+      { name: 'loanId', type: 'uint256', indexed: true, internalType: 'uint256' },
+      { name: 'voucher', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'principal', type: 'uint256', indexed: false, internalType: 'uint256' },
+      { name: 'yield', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
     name: 'LoanDefaulted',
     inputs: [
       { name: 'loanId', type: 'uint256', indexed: true, internalType: 'uint256' },
       { name: 'borrower', type: 'address', indexed: true, internalType: 'address' },
       { name: 'totalSlashed', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'VoucherSlashed',
+    inputs: [
+      { name: 'loanId', type: 'uint256', indexed: true, internalType: 'uint256' },
+      { name: 'voucher', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'loss', type: 'uint256', indexed: false, internalType: 'uint256' },
+      { name: 'insuranceCovered', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LiquidationBounty',
+    inputs: [
+      { name: 'loanId', type: 'uint256', indexed: true, internalType: 'uint256' },
+      { name: 'liquidator', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'bounty', type: 'uint256', indexed: false, internalType: 'uint256' },
     ],
   },
   {
@@ -235,10 +375,26 @@ export const TRUST_CIRCLE_ABI = [
       { name: 'newScore', type: 'uint256', indexed: false, internalType: 'uint256' },
     ],
   },
+  {
+    type: 'event',
+    name: 'AccountFrozen',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'cooldownUntil', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ProtocolFeeCollected',
+    inputs: [
+      { name: 'loanId', type: 'uint256', indexed: true, internalType: 'uint256' },
+      { name: 'fee', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
 ] as const;
 
 // ============================================================
-// ReputationEngine ABI
+// ReputationEngine ABI (matches ReputationEngine.sol)
 // ============================================================
 
 export const REPUTATION_ENGINE_ABI = [
@@ -249,11 +405,18 @@ export const REPUTATION_ENGINE_ABI = [
       { name: 'rep', type: 'uint256', internalType: 'uint256' },
     ],
     outputs: [
-      { name: 'minRep', type: 'uint256', internalType: 'uint256' },
-      { name: 'maxBorrow', type: 'uint256', internalType: 'uint256' },
-      { name: 'interestBps', type: 'uint256', internalType: 'uint256' },
-      { name: 'maxDuration', type: 'uint256', internalType: 'uint256' },
-      { name: 'minVouchers', type: 'uint256', internalType: 'uint256' },
+      {
+        name: '',
+        type: 'tuple',
+        internalType: 'struct IReputationEngine.Tier',
+        components: [
+          { name: 'minRep', type: 'uint256', internalType: 'uint256' },
+          { name: 'maxBorrow', type: 'uint256', internalType: 'uint256' },
+          { name: 'interestBps', type: 'uint256', internalType: 'uint256' },
+          { name: 'maxDuration', type: 'uint256', internalType: 'uint256' },
+          { name: 'minVouchers', type: 'uint256', internalType: 'uint256' },
+        ],
+      },
     ],
     stateMutability: 'view',
   },
@@ -290,7 +453,7 @@ export const REPUTATION_ENGINE_ABI = [
     outputs: [
       { name: '', type: 'uint256', internalType: 'uint256' },
     ],
-    stateMutability: 'view',
+    stateMutability: 'pure',
   },
   {
     type: 'function',
@@ -312,7 +475,7 @@ export const REPUTATION_ENGINE_ABI = [
       {
         name: '',
         type: 'tuple[7]',
-        internalType: 'struct ReputationEngine.Tier[7]',
+        internalType: 'struct IReputationEngine.Tier[7]',
         components: [
           { name: 'minRep', type: 'uint256', internalType: 'uint256' },
           { name: 'maxBorrow', type: 'uint256', internalType: 'uint256' },
@@ -327,7 +490,7 @@ export const REPUTATION_ENGINE_ABI = [
 ] as const;
 
 // ============================================================
-// InsurancePool ABI
+// InsurancePool ABI (matches InsurancePool.sol)
 // ============================================================
 
 export const INSURANCE_POOL_ABI = [
@@ -352,10 +515,36 @@ export const INSURANCE_POOL_ABI = [
     ],
     stateMutability: 'view',
   },
+  // Events
+  {
+    type: 'event',
+    name: 'Contributed',
+    inputs: [
+      { name: 'amount', type: 'uint256', indexed: false, internalType: 'uint256' },
+      { name: 'newBalance', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'CoveragePaid',
+    inputs: [
+      { name: 'voucher', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'loss', type: 'uint256', indexed: false, internalType: 'uint256' },
+      { name: 'covered', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'BountyPaid',
+    inputs: [
+      { name: 'liquidator', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'bounty', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
 ] as const;
 
 // ============================================================
-// CircuitBreaker ABI
+// CircuitBreaker ABI (matches CircuitBreaker.sol)
 // ============================================================
 
 export const CIRCUIT_BREAKER_ABI = [
@@ -364,7 +553,7 @@ export const CIRCUIT_BREAKER_ABI = [
     name: 'getHealth',
     inputs: [],
     outputs: [
-      { name: '', type: 'uint8', internalType: 'uint8' },
+      { name: '', type: 'uint8', internalType: 'enum ICircuitBreaker.SystemHealth' },
     ],
     stateMutability: 'view',
   },
@@ -404,7 +593,7 @@ export const CIRCUIT_BREAKER_ABI = [
     name: 'getDefaultRate',
     inputs: [],
     outputs: [
-      { name: '', type: 'uint256', internalType: 'uint256' },
+      { name: 'rateBps', type: 'uint256', internalType: 'uint256' },
     ],
     stateMutability: 'view',
   },
@@ -413,21 +602,46 @@ export const CIRCUIT_BREAKER_ABI = [
     name: 'getStats',
     inputs: [],
     outputs: [
-      { name: 'activeLoans', type: 'uint256', internalType: 'uint256' },
-      { name: 'totalLoans', type: 'uint256', internalType: 'uint256' },
-      { name: 'totalDefaults', type: 'uint256', internalType: 'uint256' },
-      { name: 'recentDefaults', type: 'uint256', internalType: 'uint256' },
+      { name: '_activeLoans', type: 'uint256', internalType: 'uint256' },
+      { name: '_totalLoans', type: 'uint256', internalType: 'uint256' },
+      { name: '_totalDefaults', type: 'uint256', internalType: 'uint256' },
+      { name: '_recentDefaults', type: 'uint256', internalType: 'uint256' },
     ],
     stateMutability: 'view',
+  },
+  // Events
+  {
+    type: 'event',
+    name: 'HealthChanged',
+    inputs: [
+      { name: 'oldHealth', type: 'uint8', indexed: false, internalType: 'enum ICircuitBreaker.SystemHealth' },
+      { name: 'newHealth', type: 'uint8', indexed: false, internalType: 'enum ICircuitBreaker.SystemHealth' },
+      { name: 'defaultRate', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LoanRecorded',
+    inputs: [
+      { name: 'activeLoans', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DefaultRecorded',
+    inputs: [
+      { name: 'defaultsInWindow', type: 'uint256', indexed: false, internalType: 'uint256' },
+      { name: 'activeLoans', type: 'uint256', indexed: false, internalType: 'uint256' },
+    ],
   },
 ] as const;
 
 // ============================================================
-// TrustCircleENS ABI
+// TrustCircleENS ABI (matches TrustCircleENS.sol)
 // ============================================================
 
 export const TRUST_CIRCLE_ENS_ABI = [
-  // --- Functions ---
+  // ─── Write Functions ─────────────────────────────────────
   {
     type: 'function',
     name: 'claimSubname',
@@ -437,6 +651,36 @@ export const TRUST_CIRCLE_ENS_ABI = [
     outputs: [],
     stateMutability: 'nonpayable',
   },
+  {
+    type: 'function',
+    name: 'transferSubname',
+    inputs: [
+      { name: 'to', type: 'address', internalType: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'linkMainnetENS',
+    inputs: [
+      { name: 'ensName', type: 'string', internalType: 'string' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setTextRecord',
+    inputs: [
+      { name: 'key', type: 'string', internalType: 'string' },
+      { name: 'value', type: 'string', internalType: 'string' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+
+  // ─── View Functions ──────────────────────────────────────
   {
     type: 'function',
     name: 'resolve',
@@ -486,16 +730,6 @@ export const TRUST_CIRCLE_ENS_ABI = [
   },
   {
     type: 'function',
-    name: 'setTextRecord',
-    inputs: [
-      { name: 'key', type: 'string', internalType: 'string' },
-      { name: 'value', type: 'string', internalType: 'string' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
     name: 'getTextRecord',
     inputs: [
       { name: 'user', type: 'address', internalType: 'address' },
@@ -507,7 +741,7 @@ export const TRUST_CIRCLE_ENS_ABI = [
     stateMutability: 'view',
   },
 
-  // --- Events ---
+  // ─── Events ──────────────────────────────────────────────
   {
     type: 'event',
     name: 'SubnameClaimed',
@@ -518,10 +752,36 @@ export const TRUST_CIRCLE_ENS_ABI = [
       { name: 'timestamp', type: 'uint256', indexed: false, internalType: 'uint256' },
     ],
   },
+  {
+    type: 'event',
+    name: 'SubnameTransferred',
+    inputs: [
+      { name: 'subname', type: 'string', indexed: false, internalType: 'string' },
+      { name: 'from', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'to', type: 'address', indexed: true, internalType: 'address' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'MainnetENSLinked',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'ensName', type: 'string', indexed: false, internalType: 'string' },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'TextRecordSet',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true, internalType: 'address' },
+      { name: 'key', type: 'string', indexed: false, internalType: 'string' },
+      { name: 'value', type: 'string', indexed: false, internalType: 'string' },
+    ],
+  },
 ] as const;
 
 // ============================================================
-// ERC20 ABI (minimal: approve, balanceOf, allowance, decimals)
+// ERC20 ABI (minimal: approve, balanceOf, allowance, decimals, mint)
 // ============================================================
 
 export const ERC20_ABI = [
@@ -568,5 +828,15 @@ export const ERC20_ABI = [
       { name: '', type: 'uint8', internalType: 'uint8' },
     ],
     stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'mint',
+    inputs: [
+      { name: 'to', type: 'address', internalType: 'address' },
+      { name: 'amount', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
 ] as const;
