@@ -1,21 +1,26 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { useReadContract } from "wagmi";
+import { useCallback, useMemo, useState, useEffect } from "react";
+import { useReadContract, usePublicClient } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { parseUnits, encodeFunctionData } from "viem";
 import { MiniKit } from "@worldcoin/minikit-js";
 import { worldChainSepolia } from "@/lib/chains";
-import { CONTRACTS, TRUST_CIRCLE_ABI, TRUST_CIRCLE_ENS_ABI, ERC20_ABI } from "@/lib/contracts";
+import {
+  CONTRACTS,
+  TRUST_CIRCLE_ABI,
+  TRUST_CIRCLE_ENS_ABI,
+  ERC20_ABI,
+} from "@/lib/contracts";
 import { useTxFeedback } from "@/hooks/use-tx-feedback";
 import { useWalletAuth } from "@/contexts/wallet-auth-context";
-import { getTierForRep } from "@/lib/tiers";
-import { getVoucherMultiplier } from "@/constants/mock-data";
+import { getTierForRep, getVoucherMultiplier } from "@/lib/tiers";
+import { VOUCH_ACTIVATION_DELAY_HOURS } from "@/lib/constants";
 import {
   MOCK_USER,
   MOCK_ACTIVE_LOAN,
   MOCK_VOUCHES_RECEIVED,
-  type MockVouch,
-  type MockLoan,
+  MOCK_VOUCHES_GIVEN,
 } from "@/constants/mock-data";
 
 // ─── Types ──────────────────────────────────────────────────
@@ -49,6 +54,37 @@ export interface WorldIdProof {
   verification_level: string;
 }
 
+export interface VouchData {
+  id: string;
+  voucher: {
+    address: string;
+    ensName: string;
+    reputationScore: number;
+    verified: boolean;
+  };
+  amount: number;
+  usedAmount: number;
+  isActive: boolean;
+  activatesAt: string;
+  createdAt: string;
+}
+
+export interface LoanData {
+  id: string;
+  borrower: string;
+  principal: number;
+  interestRate: number;
+  totalDue: number;
+  amountRepaid: number;
+  borrowedAt: string;
+  dueDate: string;
+  gracePeriodEnd: string;
+  status: "Active" | "Grace" | "Repaid" | "Defaulted";
+  insuranceContribution: number;
+  vouchers: string[];
+  voucherAmounts: number[];
+}
+
 export interface TrustCircleActions {
   register: (proof: WorldIdProof) => Promise<void>;
   vouch: (borrowerAddress: string, amount: number) => Promise<void>;
@@ -60,29 +96,17 @@ export interface TrustCircleActions {
 
 export interface UseTrustCircleReturn {
   userProfile: UserProfile | null;
-  activeLoan: MockLoan | null;
+  activeLoan: LoanData | null;
   availableLimit: AvailableLimit;
-  vouchesReceived: MockVouch[];
-  vouchesGiven: MockVouch[];
+  vouchesReceived: VouchData[];
+  vouchesGiven: VouchData[];
   actions: TrustCircleActions;
   isLoading: boolean;
   error: Error | null;
 }
 
-// ─── Helpers ────────────────────────────────────────────────
+// ─── On-chain return types ─────────────────────────────────
 
-function computeAvailableLimit(vouches: MockVouch[], rep: number): AvailableLimit {
-  const activeVouches = vouches.filter((v) => v.isActive);
-  const totalAvailable = activeVouches.reduce((sum, v) => {
-    const multiplier = getVoucherMultiplier(v.voucher.reputationScore);
-    return sum + (v.amount - v.usedAmount) * multiplier;
-  }, 0);
-  const tier = getTierForRep(rep);
-  const limit = Math.min(totalAvailable, tier.maxBorrow);
-  return { limit: Math.round(limit * 100) / 100, voucherCount: activeVouches.length };
-}
-
-// On-chain return types
 interface ProfileView {
   isRegistered: boolean;
   reputationScore: bigint;
@@ -96,17 +120,19 @@ interface ProfileView {
 }
 
 type ActiveLoanTuple = [bigint, bigint, bigint, bigint, bigint, bigint, number];
+type VouchDetailsTuple = [bigint, bigint, boolean, bigint];
 
 // ─── MiniKit TX Helper ─────────────────────────────────────
 
-async function sendTx(calls: Array<{
-  address: string;
-  abi: readonly unknown[];
-  functionName: string;
-  args: unknown[];
-}>) {
+async function sendTx(
+  calls: Array<{
+    address: string;
+    abi: readonly unknown[];
+    functionName: string;
+    args: unknown[];
+  }>,
+) {
   if (MiniKit.isInstalled()) {
-    // Encode each call to calldata (MiniKit v2 requires CalldataTransaction)
     const transactions = calls.map((call) => ({
       to: call.address,
       data: encodeFunctionData({
@@ -140,10 +166,16 @@ async function sendTx(calls: Array<{
 export function useTrustCircle(): UseTrustCircleReturn {
   const { address, isAuthenticated } = useWalletAuth();
   const { withFeedback } = useTxFeedback();
+  const queryClient = useQueryClient();
+  const publicClient = usePublicClient();
+
+  const invalidateOnChainQueries = useCallback(() => {
+    queryClient.invalidateQueries();
+  }, [queryClient]);
 
   const userAddress = address as `0x${string}` | undefined;
 
-  // ── On-chain reads (wagmi — RPC only, no wallet needed) ──
+  // ── On-chain reads ─────────────────────────────────────
   const { data: onChainProfile, isLoading: profileLoading } = useReadContract({
     address: CONTRACTS.trustCircle,
     abi: TRUST_CIRCLE_ABI,
@@ -176,6 +208,144 @@ export function useTrustCircle(): UseTrustCircleReturn {
     query: { enabled: !!userAddress },
   });
 
+  // Voucher addresses that vouch FOR this user
+  const { data: borrowerVoucherAddrs } = useReadContract({
+    address: CONTRACTS.trustCircle,
+    abi: TRUST_CIRCLE_ABI,
+    functionName: "getBorrowerVouchers",
+    args: userAddress ? [userAddress] : undefined,
+    query: { enabled: !!userAddress },
+  });
+
+  // Addresses this user has vouched FOR
+  const { data: givenVouchAddrs } = useReadContract({
+    address: CONTRACTS.trustCircle,
+    abi: TRUST_CIRCLE_ABI,
+    functionName: "getVouchesGivenTo",
+    args: userAddress ? [userAddress] : undefined,
+    query: { enabled: !!userAddress },
+  });
+
+  // ── Fetch vouch details for each voucher ──────────────
+  const [vouchesReceivedOnChain, setVouchesReceivedOnChain] = useState<VouchData[]>([]);
+  const [vouchesGivenOnChain, setVouchesGivenOnChain] = useState<VouchData[]>([]);
+  const [vouchesLoading, setVouchesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!publicClient || !userAddress) return;
+
+    const fetchVouchDetails = async () => {
+      setVouchesLoading(true);
+      try {
+        // Fetch vouches received (people who vouch for me)
+        const receivedAddrs = (borrowerVoucherAddrs as `0x${string}`[]) ?? [];
+        const receivedPromises = receivedAddrs.map(async (voucherAddr, i) => {
+          const [details, profile, ens] = await Promise.all([
+            publicClient.readContract({
+              address: CONTRACTS.trustCircle,
+              abi: TRUST_CIRCLE_ABI,
+              functionName: "getVouchDetails",
+              args: [voucherAddr, userAddress],
+            }) as Promise<VouchDetailsTuple>,
+            publicClient.readContract({
+              address: CONTRACTS.trustCircle,
+              abi: TRUST_CIRCLE_ABI,
+              functionName: "getUserProfile",
+              args: [voucherAddr],
+            }).catch(() => null),
+            publicClient.readContract({
+              address: CONTRACTS.trustCircleENS,
+              abi: TRUST_CIRCLE_ENS_ABI,
+              functionName: "getProfile",
+              args: [voucherAddr],
+            }).catch(() => null),
+          ]);
+
+          const [amount, usedAmount, isActive, activatesAt] = details;
+          const p = profile as ProfileView | null;
+          const e = ens as [string, string, string, boolean] | null;
+
+          return {
+            id: `vr-${i}`,
+            voucher: {
+              address: voucherAddr,
+              ensName: e?.[3] ? e[1] : voucherAddr.slice(0, 10),
+              reputationScore: p ? Number(p.reputationScore) : 0,
+              verified: p ? p.isRegistered : false,
+            },
+            amount: Number(amount) / 1e6,
+            usedAmount: Number(usedAmount) / 1e6,
+            isActive,
+            activatesAt: Number(activatesAt) > 0
+              ? new Date(Number(activatesAt) * 1000).toISOString()
+              : "",
+            createdAt: new Date().toISOString(),
+          } satisfies VouchData;
+        });
+
+        // Fetch vouches given (I vouch for these people)
+        const givenAddrs = (givenVouchAddrs as `0x${string}`[]) ?? [];
+        const givenPromises = givenAddrs.map(async (borrowerAddr, i) => {
+          const [details, profile, ens] = await Promise.all([
+            publicClient.readContract({
+              address: CONTRACTS.trustCircle,
+              abi: TRUST_CIRCLE_ABI,
+              functionName: "getVouchDetails",
+              args: [userAddress, borrowerAddr],
+            }) as Promise<VouchDetailsTuple>,
+            publicClient.readContract({
+              address: CONTRACTS.trustCircle,
+              abi: TRUST_CIRCLE_ABI,
+              functionName: "getUserProfile",
+              args: [borrowerAddr],
+            }).catch(() => null),
+            publicClient.readContract({
+              address: CONTRACTS.trustCircleENS,
+              abi: TRUST_CIRCLE_ENS_ABI,
+              functionName: "getProfile",
+              args: [borrowerAddr],
+            }).catch(() => null),
+          ]);
+
+          const [amount, usedAmount, isActive, activatesAt] = details;
+          const p = profile as ProfileView | null;
+          const e = ens as [string, string, string, boolean] | null;
+
+          return {
+            id: `vg-${i}`,
+            voucher: {
+              address: borrowerAddr,
+              ensName: e?.[3] ? e[1] : borrowerAddr.slice(0, 10),
+              reputationScore: p ? Number(p.reputationScore) : 0,
+              verified: p ? p.isRegistered : false,
+            },
+            amount: Number(amount) / 1e6,
+            usedAmount: Number(usedAmount) / 1e6,
+            isActive,
+            activatesAt: Number(activatesAt) > 0
+              ? new Date(Number(activatesAt) * 1000).toISOString()
+              : "",
+            createdAt: new Date().toISOString(),
+          } satisfies VouchData;
+        });
+
+        const [received, given] = await Promise.all([
+          Promise.all(receivedPromises),
+          Promise.all(givenPromises),
+        ]);
+
+        setVouchesReceivedOnChain(received);
+        setVouchesGivenOnChain(given);
+      } catch (err) {
+        console.error("[TrustCircle] Error fetching vouch details:", err);
+      } finally {
+        setVouchesLoading(false);
+      }
+    };
+
+    fetchVouchDetails();
+  }, [publicClient, userAddress, borrowerVoucherAddrs, givenVouchAddrs]);
+
   // ── Parse on-chain data ───────────────────────────────
   const userProfile = useMemo<UserProfile | null>(() => {
     if (!isAuthenticated || !address) {
@@ -198,7 +368,6 @@ export function useTrustCircle(): UseTrustCircleReturn {
     }
 
     if (!onChainProfile) return null;
-
     const p = onChainProfile as unknown as ProfileView;
 
     let ensName: string | null = null;
@@ -227,7 +396,7 @@ export function useTrustCircle(): UseTrustCircleReturn {
     };
   }, [isAuthenticated, address, onChainProfile, ensProfile]);
 
-  const activeLoan = useMemo<MockLoan | null>(() => {
+  const activeLoan = useMemo<LoanData | null>(() => {
     if (!isAuthenticated || !onChainLoan) {
       return MOCK_ACTIVE_LOAN;
     }
@@ -237,7 +406,7 @@ export function useTrustCircle(): UseTrustCircleReturn {
 
     if (Number(loanId) === 0 && status === 0) return null;
 
-    const statusMap: Record<number, MockLoan["status"]> = {
+    const statusMap: Record<number, LoanData["status"]> = {
       0: "Active", 1: "Active", 2: "Repaid", 3: "Defaulted",
     };
 
@@ -260,13 +429,34 @@ export function useTrustCircle(): UseTrustCircleReturn {
 
   const availableLimit = useMemo<AvailableLimit>(() => {
     if (!isAuthenticated || !onChainLimit) {
-      return computeAvailableLimit(MOCK_VOUCHES_RECEIVED, MOCK_USER.reputationScore);
+      // Use on-chain vouches if available, otherwise mock
+      const vouches = vouchesReceivedOnChain.length > 0
+        ? vouchesReceivedOnChain
+        : MOCK_VOUCHES_RECEIVED;
+      const rep = userProfile?.reputationScore ?? MOCK_USER.reputationScore;
+      const activeVouches = vouches.filter((v) => v.isActive);
+      const totalAvailable = activeVouches.reduce((sum, v) => {
+        const multiplier = getVoucherMultiplier(v.voucher.reputationScore);
+        return sum + (v.amount - v.usedAmount) * multiplier;
+      }, 0);
+      const tier = getTierForRep(rep);
+      const limit = Math.min(totalAvailable, tier.maxBorrow);
+      return { limit: Math.round(limit * 100) / 100, voucherCount: activeVouches.length };
     }
     const [limit, voucherCount] = onChainLimit as unknown as [bigint, bigint];
     return { limit: Number(limit) / 1e6, voucherCount: Number(voucherCount) };
-  }, [isAuthenticated, onChainLimit]);
+  }, [isAuthenticated, onChainLimit, vouchesReceivedOnChain, userProfile]);
 
-  // ── Actions (MiniKit.sendTransaction with feedback) ───
+  // ── Resolved vouches: on-chain if available, mock fallback ──
+  const vouchesReceived = isAuthenticated && vouchesReceivedOnChain.length > 0
+    ? vouchesReceivedOnChain
+    : MOCK_VOUCHES_RECEIVED;
+
+  const vouchesGiven = isAuthenticated && vouchesGivenOnChain.length > 0
+    ? vouchesGivenOnChain
+    : MOCK_VOUCHES_GIVEN;
+
+  // ── Actions ────────────────────────────────────────────
   const register = useCallback(async (proof: WorldIdProof) => {
     await withFeedback(async () => {
       const proofArray = [];
@@ -274,95 +464,65 @@ export function useTrustCircle(): UseTrustCircleReturn {
       for (let i = 0; i < 8; i++) {
         proofArray.push(BigInt("0x" + proofHex.slice(i * 64, (i + 1) * 64)));
       }
-
       await sendTx([{
         address: CONTRACTS.trustCircle,
         abi: TRUST_CIRCLE_ABI,
         functionName: "registerWithWorldID",
-        args: [
-          BigInt(proof.merkle_root),
-          BigInt(proof.nullifier_hash),
-          proofArray,
-        ],
+        args: [BigInt(proof.merkle_root), BigInt(proof.nullifier_hash), proofArray],
       }]);
+      invalidateOnChainQueries();
     }, { loadingMsg: "Registering with World ID...", successMsg: "Registration successful!", errorMsg: "Registration failed" });
-  }, [withFeedback]);
+  }, [withFeedback, invalidateOnChainQueries]);
 
   const vouch = useCallback(async (borrowerAddress: string, amount: number) => {
     await withFeedback(async () => {
       const amountWei = parseUnits(amount.toString(), 6);
-      // MiniKit supports batched transactions — approve + vouch in one
       await sendTx([
-        {
-          address: CONTRACTS.mockUSDC,
-          abi: ERC20_ABI as unknown as readonly unknown[],
-          functionName: "approve",
-          args: [CONTRACTS.trustCircle, amountWei],
-        },
-        {
-          address: CONTRACTS.trustCircle,
-          abi: TRUST_CIRCLE_ABI,
-          functionName: "vouchForUser",
-          args: [borrowerAddress, amountWei],
-        },
+        { address: CONTRACTS.mockUSDC, abi: ERC20_ABI as unknown as readonly unknown[], functionName: "approve", args: [CONTRACTS.trustCircle, amountWei] },
+        { address: CONTRACTS.trustCircle, abi: TRUST_CIRCLE_ABI, functionName: "vouchForUser", args: [borrowerAddress, amountWei] },
       ]);
-    }, { loadingMsg: `Vouching $${amount} USDC...`, successMsg: `Vouched $${amount} USDC! Activates in 48h.`, errorMsg: "Vouch failed" });
-  }, [withFeedback]);
+      invalidateOnChainQueries();
+    }, {
+      loadingMsg: `Vouching $${amount} USDC...`,
+      successMsg: VOUCH_ACTIVATION_DELAY_HOURS > 0
+        ? `Vouched $${amount} USDC! Activates in ${VOUCH_ACTIVATION_DELAY_HOURS}h.`
+        : `Vouched $${amount} USDC! Active immediately (demo mode).`,
+      errorMsg: "Vouch failed",
+    });
+  }, [withFeedback, invalidateOnChainQueries]);
 
   const borrow = useCallback(async (amount: number) => {
     await withFeedback(async () => {
       const amountWei = parseUnits(amount.toString(), 6);
-      await sendTx([{
-        address: CONTRACTS.trustCircle,
-        abi: TRUST_CIRCLE_ABI,
-        functionName: "borrow",
-        args: [amountWei],
-      }]);
+      await sendTx([{ address: CONTRACTS.trustCircle, abi: TRUST_CIRCLE_ABI, functionName: "borrow", args: [amountWei] }]);
+      invalidateOnChainQueries();
     }, { loadingMsg: `Borrowing $${amount} USDC...`, successMsg: `Borrowed $${amount} USDC successfully!`, errorMsg: "Borrow failed" });
-  }, [withFeedback]);
+  }, [withFeedback, invalidateOnChainQueries]);
 
   const repay = useCallback(async (amount: number) => {
     await withFeedback(async () => {
       const amountWei = parseUnits(amount.toString(), 6);
-      // Batched: approve + repay
       await sendTx([
-        {
-          address: CONTRACTS.mockUSDC,
-          abi: ERC20_ABI as unknown as readonly unknown[],
-          functionName: "approve",
-          args: [CONTRACTS.trustCircle, amountWei],
-        },
-        {
-          address: CONTRACTS.trustCircle,
-          abi: TRUST_CIRCLE_ABI,
-          functionName: "repayLoan",
-          args: [amountWei],
-        },
+        { address: CONTRACTS.mockUSDC, abi: ERC20_ABI as unknown as readonly unknown[], functionName: "approve", args: [CONTRACTS.trustCircle, amountWei] },
+        { address: CONTRACTS.trustCircle, abi: TRUST_CIRCLE_ABI, functionName: "repayLoan", args: [amountWei] },
       ]);
+      invalidateOnChainQueries();
     }, { loadingMsg: `Repaying $${amount} USDC...`, successMsg: `Repaid $${amount} USDC!`, errorMsg: "Repayment failed" });
-  }, [withFeedback]);
+  }, [withFeedback, invalidateOnChainQueries]);
 
   const revokeVouch = useCallback(async (borrowerAddress: string) => {
     await withFeedback(async () => {
-      await sendTx([{
-        address: CONTRACTS.trustCircle,
-        abi: TRUST_CIRCLE_ABI,
-        functionName: "revokeVouch",
-        args: [borrowerAddress],
-      }]);
+      await sendTx([{ address: CONTRACTS.trustCircle, abi: TRUST_CIRCLE_ABI, functionName: "revokeVouch", args: [borrowerAddress] }]);
+      invalidateOnChainQueries();
     }, { loadingMsg: "Revoking vouch...", successMsg: "Vouch revoked!", errorMsg: "Revoke failed" });
-  }, [withFeedback]);
+  }, [withFeedback, invalidateOnChainQueries]);
 
   const liquidate = useCallback(async (borrowerAddress: string) => {
     await withFeedback(async () => {
-      await sendTx([{
-        address: CONTRACTS.trustCircle,
-        abi: TRUST_CIRCLE_ABI,
-        functionName: "liquidateDefaultedLoan",
-        args: [borrowerAddress],
-      }]);
+      await sendTx([{ address: CONTRACTS.trustCircle, abi: TRUST_CIRCLE_ABI, functionName: "liquidateDefaultedLoan", args: [borrowerAddress] }]);
+      invalidateOnChainQueries();
     }, { loadingMsg: "Liquidating defaulted loan...", successMsg: "Loan liquidated! Bounty earned.", errorMsg: "Liquidation failed" });
-  }, [withFeedback]);
+  }, [withFeedback, invalidateOnChainQueries]);
 
   const actions: TrustCircleActions = useMemo(
     () => ({ register, vouch, borrow, repay, revokeVouch, liquidate }),
@@ -373,10 +533,10 @@ export function useTrustCircle(): UseTrustCircleReturn {
     userProfile,
     activeLoan,
     availableLimit,
-    vouchesReceived: MOCK_VOUCHES_RECEIVED,
-    vouchesGiven: [],
+    vouchesReceived,
+    vouchesGiven,
     actions,
-    isLoading: profileLoading || loanLoading || limitLoading,
+    isLoading: profileLoading || loanLoading || limitLoading || vouchesLoading,
     error: null,
   };
 }

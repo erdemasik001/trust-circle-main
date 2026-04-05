@@ -24,6 +24,8 @@ import { INSURANCE_CONTRIBUTION_PERCENT } from "@/lib/constants";
 import { useTrustCircle } from "@/hooks/use-trust-circle";
 import { useReputation } from "@/hooks/use-reputation";
 import { useCircuitBreaker } from "@/hooks/use-circuit-breaker";
+import { bpsToPercent } from "@/lib/tiers";
+import { TxButton } from "@/components/shared/tx-button";
 
 export default function BorrowPage() {
   const router = useRouter();
@@ -41,7 +43,7 @@ export default function BorrowPage() {
   const availableCredit = availableLimit.limit;
 
   const parsedAmount = parseFloat(amount) || 0;
-  const interestRatePercent = tier.interestRate;
+  const interestRatePercent = bpsToPercent(tier.interestBps);
   const interestAmount = parsedAmount * (interestRatePercent / 100);
   const insuranceFee = parsedAmount * (INSURANCE_CONTRIBUTION_PERCENT / 100);
   const totalDue = parsedAmount + interestAmount + insuranceFee;
@@ -86,8 +88,8 @@ export default function BorrowPage() {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className={`h-1 flex-1 rounded-full transition-all ${
-              i <= step ? "bg-primary" : "bg-muted"
+            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+              i <= step ? "gradient-brand shadow-sm" : "bg-muted"
             }`}
           />
         ))}
@@ -125,7 +127,7 @@ export default function BorrowPage() {
                       <Percent className="h-3 w-3" />
                       {t.interestRate}
                     </div>
-                    <p className="font-mono text-lg font-bold">{tier.interestRate}%</p>
+                    <p className="font-mono text-lg font-bold">{bpsToPercent(tier.interestBps)}%</p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
@@ -292,16 +294,14 @@ export default function BorrowPage() {
                   </CardContent>
                 </Card>
 
-                <Button onClick={handleSubmit} disabled={submitting || !circuitBreaker.canCreateLoan} className="mt-4 w-full" size="lg">
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    t.confirmBorrow
-                  )}
-                </Button>
+                <TxButton
+                  onClick={handleSubmit}
+                  loading={submitting}
+                  disabled={!circuitBreaker.canCreateLoan}
+                  className="mt-4 w-full"
+                >
+                  {t.confirmBorrow}
+                </TxButton>
               </>
             )}
           </motion.div>

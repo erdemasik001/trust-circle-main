@@ -26,34 +26,51 @@ import {
   MAX_CONCENTRATION_PERCENT,
   VOUCH_ACTIVATION_DELAY_HOURS,
 } from "@/lib/constants";
+import { useReadContract } from "wagmi";
+import { CONTRACTS, TRUST_CIRCLE_ABI } from "@/lib/contracts";
 import { useTrustCircle } from "@/hooks/use-trust-circle";
 import { useENS } from "@/hooks/use-ens";
-import { MOCK_SEARCHABLE_USERS } from "@/constants/mock-data";
+import { useRegisteredUsers, type RegisteredUser } from "@/hooks/use-registered-users";
+import { TxButton } from "@/components/shared/tx-button";
 
 export default function VouchPage() {
   const router = useRouter();
   const { t } = useLanguage();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUser, setSelectedUser] = useState<typeof MOCK_SEARCHABLE_USERS[number] | null>(null);
+  const [selectedUser, setSelectedUser] = useState<RegisteredUser | null>(null);
   const [vouchAmount, setVouchAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const { userProfile, vouchesGiven, actions } = useTrustCircle();
   const ens = useENS();
+  const { users: registeredUsers } = useRegisteredUsers();
+
+  // Read selected borrower's on-chain profile for real totalVouchesReceived
+  const { data: borrowerProfile } = useReadContract({
+    address: CONTRACTS.trustCircle,
+    abi: TRUST_CIRCLE_ABI,
+    functionName: "getUserProfile",
+    args: selectedUser ? [selectedUser.address as `0x${string}`] : undefined,
+    query: { enabled: !!selectedUser },
+  });
 
   const filteredUsers = searchQuery.length >= 2
-    ? MOCK_SEARCHABLE_USERS.filter((u) =>
-        u.ensName.toLowerCase().includes(searchQuery.toLowerCase())
+    ? registeredUsers.filter((u) =>
+        u.ensName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.address.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
 
   const parsedAmount = parseFloat(vouchAmount) || 0;
   const isAmountValid = parsedAmount >= MIN_VOUCH_AMOUNT;
 
-  // Mock: assume the borrower currently has $200 in vouches
-  const borrowerTotalVouches = 200;
+  // Read borrower's total vouches from on-chain data, fallback to 0 for new users
+  const onChainTotal = borrowerProfile
+    ? Number((borrowerProfile as { totalVouchesReceived: bigint }).totalVouchesReceived) / 1e6
+    : 0;
+  const borrowerTotalVouches = onChainTotal;
   const concentrationPercent = borrowerTotalVouches > 0
     ? Math.round((parsedAmount / (borrowerTotalVouches + parsedAmount)) * 100)
     : 100;
@@ -79,7 +96,9 @@ export default function VouchPage() {
         <CheckCircle2 className="h-16 w-16 text-green-500" />
         <h2 className="text-xl font-bold">Vouch Submitted!</h2>
         <p className="text-center text-sm text-muted-foreground">
-          Your vouch will activate in {VOUCH_ACTIVATION_DELAY_HOURS} hours.
+          {VOUCH_ACTIVATION_DELAY_HOURS > 0
+            ? `Your vouch will activate in ${VOUCH_ACTIVATION_DELAY_HOURS} hours.`
+            : "Your vouch is active immediately (demo mode)."}
         </p>
       </div>
     );
@@ -255,21 +274,14 @@ export default function VouchPage() {
           </div>
 
           {/* Confirm */}
-          <Button
+          <TxButton
             onClick={handleConfirm}
-            disabled={!isAmountValid || exceedsConcentration || submitting}
+            loading={submitting}
+            disabled={!isAmountValid || exceedsConcentration}
             className="w-full"
-            size="lg"
           >
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              t.confirmVouch
-            )}
-          </Button>
+            {t.confirmVouch}
+          </TxButton>
         </>
       )}
 

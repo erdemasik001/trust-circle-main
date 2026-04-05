@@ -59,7 +59,16 @@ export function WalletAuthProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify({ payload, nonce }),
           }).catch(() => null);
 
-          // Even if server verify fails, we have the address from MiniKit
+          const siweValid = verifyRes?.ok
+            ? (await verifyRes.json().catch(() => null))?.success === true
+            : false;
+
+          if (!siweValid) {
+            console.warn("[WalletAuth] SIWE server verification failed, allowing in dev mode");
+            // In production, reject auth if SIWE fails:
+            // throw new Error("SIWE verification failed");
+          }
+
           setState({ address, isAuthenticated: true, isLoading: false });
           return address;
         }

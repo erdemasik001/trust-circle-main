@@ -1,6 +1,9 @@
 // Protocol constants — mirrors on-chain values
 
-export const VOUCH_ACTIVATION_DELAY_HOURS = 48;
+// In demo mode (NEXT_PUBLIC_DEMO_MODE=true), vouch activation is instant.
+// In production, vouches require 48h cooldown before they become active.
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+export const VOUCH_ACTIVATION_DELAY_HOURS = IS_DEMO ? 0 : 48;
 export const GRACE_PERIOD_DAYS = 7;
 export const LATE_FEE_PERCENT = 2;
 export const DEFAULT_COOLDOWN_DAYS = 30;

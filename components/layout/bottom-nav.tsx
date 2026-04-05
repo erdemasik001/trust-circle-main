@@ -19,8 +19,8 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50">
-      <div className="mx-auto max-w-md">
-        <div className="flex items-center justify-around bg-white/90 dark:bg-neutral-900/90 backdrop-blur-2xl border-t border-border/50 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+      <div className="mx-auto max-w-md px-3 pb-[env(safe-area-inset-bottom)]">
+        <div className="flex items-center justify-around rounded-2xl border border-white/20 bg-white/80 px-2 py-2 shadow-lg shadow-black/5 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-900/80 mb-2">
           {tabs.map((tab) => {
             const isActive = pathname.startsWith(tab.href);
             const Icon = tab.icon;
@@ -29,17 +29,17 @@ export function BottomNav() {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-colors",
+                  "relative flex flex-col items-center gap-0.5 px-5 py-1.5 rounded-xl transition-all duration-200",
                   isActive
-                    ? "text-primary"
+                    ? "text-white"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon className={cn("h-5 w-5", isActive && "stroke-[2.5]")} />
-                <span className="text-[10px] font-medium">{t[tab.labelKey]}</span>
                 {isActive && (
-                  <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />
+                  <div className="absolute inset-0 gradient-brand rounded-xl opacity-90" />
                 )}
+                <Icon className={cn("relative h-5 w-5", isActive && "stroke-[2.5]")} />
+                <span className="relative text-[10px] font-semibold">{t[tab.labelKey]}</span>
               </Link>
             );
           })}

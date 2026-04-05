@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { TierBadge } from "@/components/shared/tier-badge";
 import { RepScore } from "@/components/shared/rep-score";
 import { BadgeCheck } from "lucide-react";
@@ -33,31 +32,35 @@ export function ProfileCard({
   tierColor,
 }: ProfileCardProps) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1A1A2E] via-[#16213E] to-[#0F3460] p-5">
-      {/* Decorative background circles */}
-      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl" />
-      <div className="absolute -left-4 -bottom-4 h-20 w-20 rounded-full bg-violet-500/10 blur-2xl" />
+    <div className="relative overflow-hidden rounded-2xl p-5 gradient-brand shadow-brand-lg">
+      {/* Animated decorative elements */}
+      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+      <div className="absolute -left-6 -bottom-6 h-28 w-28 rounded-full bg-purple-300/15 blur-2xl" />
+      <div className="absolute right-12 bottom-2 h-16 w-16 rounded-full bg-indigo-300/10 blur-xl" />
 
       <div className="relative flex items-center gap-4">
-        {/* Avatar */}
-        <div
-          className="flex size-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ring-2 ring-white/10"
-          style={{ backgroundColor: `${tierColor}44` }}
-        >
-          {getInitials(ensName)}
+        {/* Avatar with glow */}
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full bg-white/20 blur-md scale-125" />
+          <div
+            className="relative flex size-13 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ring-2 ring-white/30 shadow-lg"
+            style={{ backgroundColor: `${tierColor}55` }}
+          >
+            {getInitials(ensName)}
+          </div>
         </div>
 
         {/* Identity */}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-base font-semibold text-white">
+            <span className="truncate text-base font-bold text-white">
               {ensName}
             </span>
             {verified && (
-              <BadgeCheck className="size-4 shrink-0 text-blue-400" />
+              <BadgeCheck className="size-4 shrink-0 text-white/80" />
             )}
           </div>
-          <span className="font-mono text-xs text-zinc-400">
+          <span className="font-mono text-xs text-white/60">
             {truncateAddress(address)}
           </span>
         </div>
@@ -69,8 +72,8 @@ export function ProfileCard({
       {/* Tier badge row */}
       <div className="relative mt-4 flex items-center justify-between">
         <TierBadge tierName={tierName} size="sm" />
-        <span className="text-xs text-zinc-400">
-          Rep Score: {reputationScore} / 1000
+        <span className="text-xs font-medium text-white/70">
+          {reputationScore} / 1000 rep
         </span>
       </div>
     </div>

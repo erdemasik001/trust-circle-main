@@ -19,6 +19,7 @@ import { Progress, ProgressTrack, ProgressIndicator } from "@/components/ui/prog
 import { useLanguage } from "@/contexts/language-context";
 import { GRACE_PERIOD_DAYS, LATE_FEE_PERCENT } from "@/lib/constants";
 import { useTrustCircle } from "@/hooks/use-trust-circle";
+import { CountdownTimer } from "@/components/shared/countdown-timer";
 
 export default function RepayPage() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function RepayPage() {
   const totalBalance = baseBalance + lateFee;
 
   const parsedPartial = parseFloat(partialAmount) || 0;
-  const isPartialValid = parsedPartial > 0 && parsedPartial <= totalBalance;
+  const isPartialValid = parsedPartial > 0 && parsedPartial <= totalBalance && Number.isFinite(parsedPartial);
 
   const repaymentProgress = Math.round((loan.amountRepaid / loan.totalDue) * 100);
 
@@ -150,9 +151,9 @@ export default function RepayPage() {
           <p className="text-sm text-muted-foreground mb-1">{t.balanceDue}</p>
           <p className="font-mono text-3xl font-bold">${totalBalance.toFixed(2)}</p>
           {!isPastDue && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t.daysRemaining(daysUntilDue)} until due date
-            </p>
+            <div className="mt-1">
+              <CountdownTimer targetDate={loan.dueDate} label="Due" />
+            </div>
           )}
         </CardContent>
       </Card>
@@ -234,6 +235,12 @@ export default function RepayPage() {
             />
             {parsedPartial > totalBalance && (
               <p className="mt-1 text-xs text-red-500">Cannot exceed balance of ${totalBalance.toFixed(2)}</p>
+            )}
+            {parsedPartial < 0 && (
+              <p className="mt-1 text-xs text-red-500">Amount must be positive</p>
+            )}
+            {partialAmount !== "" && parsedPartial === 0 && (
+              <p className="mt-1 text-xs text-red-500">Enter an amount greater than 0</p>
             )}
             <Button
               onClick={() => {

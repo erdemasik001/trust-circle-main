@@ -15,15 +15,20 @@ export const CONTRACTS = {
 } as const;
 
 // Contract addresses — Arc Testnet (Chain ID: 5042002)
+// Set via NEXT_PUBLIC_ARC_* env vars after deploying to Arc Testnet.
+// Falls back to World Chain Sepolia addresses for demo purposes.
+const arcAddr = (envKey: string, fallback: string) =>
+  (process.env[envKey] || fallback) as `0x${string}`;
+
 export const ARC_CONTRACTS = {
-  trustCircle: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  reputationEngine: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  insurancePool: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  circuitBreaker: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  trustCircleENS: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  mockUSDC: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-  mockWorldID: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-} as const;
+  trustCircle: arcAddr('NEXT_PUBLIC_ARC_TRUST_CIRCLE', CONTRACTS.trustCircle),
+  reputationEngine: arcAddr('NEXT_PUBLIC_ARC_REPUTATION_ENGINE', CONTRACTS.reputationEngine),
+  insurancePool: arcAddr('NEXT_PUBLIC_ARC_INSURANCE_POOL', CONTRACTS.insurancePool),
+  circuitBreaker: arcAddr('NEXT_PUBLIC_ARC_CIRCUIT_BREAKER', CONTRACTS.circuitBreaker),
+  trustCircleENS: arcAddr('NEXT_PUBLIC_ARC_TRUST_CIRCLE_ENS', CONTRACTS.trustCircleENS),
+  mockUSDC: arcAddr('NEXT_PUBLIC_ARC_MOCK_USDC', CONTRACTS.mockUSDC),
+  mockWorldID: arcAddr('NEXT_PUBLIC_ARC_MOCK_WORLD_ID', CONTRACTS.mockWorldID),
+};
 
 export function getContracts(chainId: number) {
   if (chainId === 5042002) return ARC_CONTRACTS;

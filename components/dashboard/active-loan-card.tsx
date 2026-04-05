@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { type MockLoan } from "@/constants/mock-data";
+import { type LoanData } from "@/hooks/use-trust-circle";
 import { CountdownTimer } from "@/components/shared/countdown-timer";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, DollarSign } from "lucide-react";
 
 interface ActiveLoanCardProps {
-  loan: MockLoan;
+  loan: LoanData;
 }
 
 export function ActiveLoanCard({ loan }: ActiveLoanCardProps) {

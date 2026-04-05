@@ -1,47 +1,9 @@
 // Trust Circle Mock Data — Next.js Migration
 // Aligned with protocol docs: tiers, reputation, insurance, circuit breaker
 
-// ─── Protocol Constants ──────────────────────────────────
+// Tier definitions are in lib/tiers.ts (single source of truth)
 
-export const TIERS = [
-  { id: 0, name: 'Frozen',      minRep: 0,   maxBorrow: 0,       interestBps: 0,    maxDuration: 0,   minVouchers: 0, color: '#6B7280' },
-  { id: 1, name: 'Newcomer',    minRep: 100, maxBorrow: 100,     interestBps: 1500, maxDuration: 14,  minVouchers: 1, color: '#9CA3AF' },
-  { id: 2, name: 'Rising',      minRep: 200, maxBorrow: 500,     interestBps: 1200, maxDuration: 21,  minVouchers: 3, color: '#60A5FA' },
-  { id: 3, name: 'Building',    minRep: 300, maxBorrow: 2000,    interestBps: 800,  maxDuration: 30,  minVouchers: 3, color: '#34D399' },
-  { id: 4, name: 'Trusted',     minRep: 500, maxBorrow: 10000,   interestBps: 500,  maxDuration: 60,  minVouchers: 3, color: '#A78BFA' },
-  { id: 5, name: 'Established', minRep: 700, maxBorrow: 50000,   interestBps: 300,  maxDuration: 90,  minVouchers: 5, color: '#F59E0B' },
-  { id: 6, name: 'Leader',      minRep: 900, maxBorrow: 100000,  interestBps: 200,  maxDuration: 180, minVouchers: 5, color: '#EF4444' },
-] as const;
-
-export type TierInfo = typeof TIERS[number];
-
-export function getTierForRep(rep: number): TierInfo {
-  for (let i = TIERS.length - 1; i >= 0; i--) {
-    if (rep >= TIERS[i].minRep) return TIERS[i];
-  }
-  return TIERS[0];
-}
-
-export function getNextTier(rep: number): TierInfo | null {
-  const current = getTierForRep(rep);
-  const nextIndex = TIERS.findIndex(t => t.id === current.id) + 1;
-  return nextIndex < TIERS.length ? TIERS[nextIndex] : null;
-}
-
-export const VOUCHER_MULTIPLIERS = [
-  { minRep: 0,   maxRep: 199, multiplier: 0.50 },
-  { minRep: 200, maxRep: 499, multiplier: 0.75 },
-  { minRep: 500, maxRep: 699, multiplier: 1.00 },
-  { minRep: 700, maxRep: 899, multiplier: 1.25 },
-  { minRep: 900, maxRep: 1000, multiplier: 1.50 },
-] as const;
-
-export function getVoucherMultiplier(rep: number): number {
-  for (const m of VOUCHER_MULTIPLIERS) {
-    if (rep >= m.minRep && rep <= m.maxRep) return m.multiplier;
-  }
-  return 0.5;
-}
+// Voucher multiplier moved to lib/tiers.ts (single source of truth)
 
 // ─── Mock User ───────────────────────────────────────────
 
@@ -135,6 +97,20 @@ export const MOCK_ACTIVE_LOAN: MockLoan = {
   vouchers: ['mehmet.trustcircle.eth', 'ayse.trustcircle.eth'],
   voucherAmounts: [100, 50],
 };
+
+// ─── Mock Vouches Given (vouches MOCK_USER gave to others) ──
+
+export const MOCK_VOUCHES_GIVEN: MockVouch[] = [
+  {
+    id: 'vg1',
+    voucher: { address: MOCK_USER.address, ensName: MOCK_USER.ensName, reputationScore: MOCK_USER.reputationScore, verified: true },
+    amount: 50,
+    usedAmount: 30,
+    isActive: true,
+    activatesAt: '2026-03-15T12:00:00Z',
+    createdAt: '2026-03-13T12:00:00Z',
+  },
+];
 
 // ─── Mock System Health ──────────────────────────────────
 
