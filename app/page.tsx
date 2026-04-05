@@ -189,7 +189,6 @@ export default function OnboardingPage() {
                       onSuccess={handleVerifySuccess}
                       onError={(err) => setVerifyError(err)}
                       buttonText={t.verifyWithWorldId}
-                      loadingText="Verifying..."
                     />
                   )}
                   {verifyError && (
