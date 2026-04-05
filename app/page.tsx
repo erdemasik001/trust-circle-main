@@ -7,9 +7,9 @@ import { HandCoins, Shield, TrendingUp, CheckCircle2, Loader2 } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/language-context";
-import { useWorldMiniKit } from "@/hooks/use-minikit";
 import { useENS } from "@/hooks/use-ens";
 import { useTrustCircle } from "@/hooks/use-trust-circle";
+import { WorldIdVerifyButton, type WorldIdProof } from "@/components/world-id-verify";
 
 const slides = [
   {
@@ -43,7 +43,6 @@ export default function OnboardingPage() {
   const [ensInput, setEnsInput] = useState("");
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
-  const minikit = useWorldMiniKit();
   const ens = useENS();
   const { actions } = useTrustCircle();
 
@@ -57,33 +56,29 @@ export default function OnboardingPage() {
     setCurrentStep(3);
   };
 
-  const handleVerify = async () => {
+  const handleVerifySuccess = async (proof: WorldIdProof) => {
     setVerifying(true);
     try {
-      // Step 1: Get World ID proof via MiniKit
-      const result = await minikit.verify();
-      if (!result.success) throw new Error("MiniKit verification failed");
-
-      // Step 2: Verify proof server-side
+      // Step 1: Verify proof server-side
       const verifyRes = await fetch("/api/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          merkle_root: result.merkle_root,
-          nullifier_hash: result.nullifier_hash,
-          proof: result.proof,
-          verification_level: result.verification_level,
+          merkle_root: proof.merkle_root,
+          nullifier_hash: proof.nullifier_hash,
+          proof: proof.proof,
+          verification_level: proof.verification_level,
         }),
       });
       const verifyData = await verifyRes.json();
       if (!verifyData.success) throw new Error(verifyData.error ?? "Server verification failed");
 
-      // Step 3: Register on-chain with the proof
+      // Step 2: Register on-chain with the proof
       await actions.register({
-        merkle_root: result.merkle_root,
-        nullifier_hash: result.nullifier_hash,
-        proof: result.proof,
-        verification_level: result.verification_level,
+        merkle_root: proof.merkle_root,
+        nullifier_hash: proof.nullifier_hash,
+        proof: proof.proof,
+        verification_level: proof.verification_level,
       });
 
       setVerified(true);
@@ -184,21 +179,19 @@ export default function OnboardingPage() {
               </p>
               {!verified && (
                 <>
-                  <Button
-                    onClick={() => { setVerifyError(null); handleVerify(); }}
-                    disabled={verifying}
-                    className="w-full max-w-xs"
-                    size="lg"
-                  >
-                    {verifying ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      t.verifyWithWorldId
-                    )}
-                  </Button>
+                  {verifying ? (
+                    <Button disabled className="w-full max-w-xs" size="lg">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Registering...
+                    </Button>
+                  ) : (
+                    <WorldIdVerifyButton
+                      onSuccess={handleVerifySuccess}
+                      onError={(err) => setVerifyError(err)}
+                      buttonText={t.verifyWithWorldId}
+                      loadingText="Verifying..."
+                    />
+                  )}
                   {verifyError && (
                     <p className="mt-3 text-sm text-red-500">{verifyError}</p>
                   )}

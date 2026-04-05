@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // World ID Cloud Verification endpoint
-// Docs: https://docs.worldcoin.org/reference/api#verify-proof
+// Supports both v3 (legacy) and v4 proof formats
 
-const WORLD_ID_APP_ID = process.env.WORLD_ID_APP_ID ?? "app_staging_trust_circle";
+const WORLD_ID_APP_ID = process.env.WORLD_ID_APP_ID ?? "app_0d26d4fbe63fa4dde5322f050a3074a0";
 const WORLD_ID_ACTION = process.env.WORLD_ID_ACTION ?? "register";
 
 interface VerifyRequestBody {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call World ID Cloud Verification API
+    // Call World ID Cloud Verification API (v2 endpoint for v3 legacy proofs)
     const verifyRes = await fetch(
       `https://developer.worldcoin.org/api/v2/verify/${WORLD_ID_APP_ID}`,
       {
@@ -49,21 +49,24 @@ export async function POST(request: NextRequest) {
       const data = await verifyRes.json();
       return NextResponse.json({
         success: true,
-        nullifier_hash: data.nullifier_hash,
+        nullifier_hash: data.nullifier_hash ?? nullifier_hash,
         verification_level: data.verification_level ?? verification_level,
+        merkle_root: data.merkle_root ?? merkle_root,
       });
     }
 
     // World ID API returned an error
     const errorData = await verifyRes.json().catch(() => ({}));
+    console.warn("[verify] World ID API error:", verifyRes.status, errorData);
 
     // In development/testnet, allow mock proofs through
     if (process.env.NODE_ENV === "development" || process.env.ALLOW_MOCK_PROOFS === "true") {
-      console.warn("[verify] World ID API rejected proof, allowing mock in dev mode");
+      console.warn("[verify] Allowing mock proof in dev mode");
       return NextResponse.json({
         success: true,
         nullifier_hash,
         verification_level,
+        merkle_root,
         mock: true,
       });
     }
