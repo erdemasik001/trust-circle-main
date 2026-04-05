@@ -13,8 +13,11 @@ import {
   CheckCircle2,
   Loader2,
   X,
+  Users,
+  TrendingUp,
+  CircleDollarSign,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -47,7 +50,6 @@ export default function VouchPage() {
   const ens = useENS();
   const { users: registeredUsers } = useRegisteredUsers();
 
-  // Read selected borrower's on-chain profile for real totalVouchesReceived
   const { data: borrowerProfile } = useReadContract({
     address: CONTRACTS.trustCircle,
     abi: TRUST_CIRCLE_ABI,
@@ -66,7 +68,6 @@ export default function VouchPage() {
   const parsedAmount = parseFloat(vouchAmount) || 0;
   const isAmountValid = parsedAmount >= MIN_VOUCH_AMOUNT;
 
-  // Read borrower's total vouches from on-chain data, fallback to 0 for new users
   const onChainTotal = borrowerProfile
     ? Number((borrowerProfile as { totalVouchesReceived: bigint }).totalVouchesReceived) / 1e6
     : 0;
@@ -93,16 +94,21 @@ export default function VouchPage() {
   if (submitted) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
-        <CheckCircle2 className="h-16 w-16 text-green-500" />
-        <h2 className="text-xl font-bold">Vouch Submitted!</h2>
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/10">
+          <CheckCircle2 className="h-10 w-10 text-green-500" />
+        </div>
+        <h2 className="text-xl font-bold">{t.vouchSuccess}</h2>
         <p className="text-center text-sm text-muted-foreground">
           {VOUCH_ACTIVATION_DELAY_HOURS > 0
-            ? `Your vouch will activate in ${VOUCH_ACTIVATION_DELAY_HOURS} hours.`
-            : "Your vouch is active immediately (demo mode)."}
+            ? `${t.activationNotice} (${VOUCH_ACTIVATION_DELAY_HOURS}h)`
+            : t.redirecting}
         </p>
       </div>
     );
   }
+
+  const activeCount = userProfile?.activeVouchCount ?? 0;
+  const positionPercent = Math.round((activeCount / MAX_VOUCHES_PER_USER) * 100);
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-6 pb-4">
@@ -111,195 +117,236 @@ export default function VouchPage() {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-lg font-bold">{t.vouchTitle}</h1>
+        <div className="flex-1">
+          <h1 className="text-lg font-bold">{t.vouchTitle}</h1>
+          <p className="text-xs text-muted-foreground">{t.activeVouchPositions}: {activeCount}/{MAX_VOUCHES_PER_USER}</p>
+        </div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
+          <Shield className="h-4.5 w-4.5 text-emerald-500" />
+        </div>
       </div>
 
-      {/* Active positions notice */}
-      <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-        <span className="text-sm text-muted-foreground">
-          You have <span className="font-semibold text-foreground">{userProfile?.activeVouchCount ?? 0}/{MAX_VOUCHES_PER_USER}</span> {t.maxPositions}
-        </span>
-        <Shield className="h-4 w-4 text-muted-foreground" />
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setSelectedUser(null);
-          }}
-          placeholder={t.searchByEns}
-          className="pl-9"
-        />
-      </div>
+      {/* Search Card */}
+      <Card>
+        <CardContent className="pt-5 pb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setSelectedUser(null);
+              }}
+              placeholder={t.searchByEns}
+              className="pl-9 h-11"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Search Results */}
       {!selectedUser && filteredUsers.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          {filteredUsers.map((user) => {
-            const userTier = getTierForRep(user.reputationScore);
-            const userTierColor = TIER_COLORS[userTier.name] ?? "#6B7280";
-            return (
-              <button
-                key={user.address}
-                onClick={() => {
-                  setSelectedUser(user);
-                  setSearchQuery(user.ensName);
-                }}
-                className="flex items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-muted/50"
-              >
-                <div
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white"
-                  style={{ backgroundColor: `${userTierColor}66` }}
-                >
-                  {user.ensName.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium">{user.ensName}</span>
-                    {user.verified && <BadgeCheck className="h-3.5 w-3.5 text-blue-500" />}
+        <Card>
+          <CardContent className="p-2">
+            <div className="flex flex-col">
+              {filteredUsers.map((user, idx) => {
+                const userTier = getTierForRep(user.reputationScore);
+                const userTierColor = TIER_COLORS[userTier.name] ?? "#6B7280";
+                return (
+                  <div key={user.address}>
+                    <button
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setSearchQuery(user.ensName);
+                      }}
+                      className="flex items-center gap-3 rounded-xl p-3 w-full text-left transition-colors hover:bg-muted/50"
+                    >
+                      <div
+                        className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+                        style={{ backgroundColor: userTierColor }}
+                      >
+                        {user.ensName.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold truncate">{user.ensName}</span>
+                          {user.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" />}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-muted-foreground">
+                            Rep: {user.reputationScore}
+                          </span>
+                          <span
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                            style={{ backgroundColor: `${userTierColor}1A`, color: userTierColor }}
+                          >
+                            {userTier.name}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-muted-foreground">
+                        <span className="text-green-600 font-medium">{user.loansRepaid}</span> / <span className="text-red-500 font-medium">{user.loansDefaulted}</span>
+                      </div>
+                    </button>
+                    {idx < filteredUsers.length - 1 && <Separator className="mx-3" />}
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    Rep: {user.reputationScore} | {userTier.name}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Selected User Profile */}
+      {/* Selected User + Vouch Form */}
       {selectedUser && (
-        <>
-          <Card>
-            <CardContent className="pt-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const userTier = getTierForRep(selectedUser.reputationScore);
-                    const userTierColor = TIER_COLORS[userTier.name] ?? "#6B7280";
-                    return (
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
-                        style={{ backgroundColor: `${userTierColor}66` }}
-                      >
-                        {selectedUser.ensName.slice(0, 2).toUpperCase()}
-                      </div>
-                    );
-                  })()}
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold">{selectedUser.ensName}</span>
-                      {selectedUser.verified && <BadgeCheck className="h-4 w-4 text-blue-500" />}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {getTierForRep(selectedUser.reputationScore).name} tier
-                    </span>
+        <Card className="border-emerald-200/60 dark:border-emerald-900/40 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold">{t.vouch}</CardTitle>
+              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => { setSelectedUser(null); setSearchQuery(""); }}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {/* User info */}
+            <div className="flex items-center gap-3 mb-4">
+              {(() => {
+                const userTier = getTierForRep(selectedUser.reputationScore);
+                const userTierColor = TIER_COLORS[userTier.name] ?? "#6B7280";
+                return (
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+                    style={{ backgroundColor: userTierColor }}
+                  >
+                    {selectedUser.ensName.slice(0, 2).toUpperCase()}
                   </div>
+                );
+              })()}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold truncate">{selectedUser.ensName}</span>
+                  {selectedUser.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" />}
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedUser(null); setSearchQuery(""); }}>
-                  <X className="h-4 w-4" />
-                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {getTierForRep(selectedUser.reputationScore).name} {t.tier.toLowerCase()}
+                </span>
               </div>
+            </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                  <p className="font-mono text-lg font-bold">{selectedUser.reputationScore}</p>
-                  <p className="text-[10px] text-muted-foreground">Rep Score</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                  <p className="font-mono text-lg font-bold text-green-600">{selectedUser.loansRepaid}</p>
-                  <p className="text-[10px] text-muted-foreground">Repaid</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-                  <p className="font-mono text-lg font-bold text-red-500">{selectedUser.loansDefaulted}</p>
-                  <p className="text-[10px] text-muted-foreground">Defaulted</p>
-                </div>
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              <div className="flex flex-col items-center rounded-xl bg-muted/50 p-3">
+                <TrendingUp className="h-3.5 w-3.5 text-muted-foreground mb-1" />
+                <p className="font-mono text-base font-bold">{selectedUser.reputationScore}</p>
+                <p className="text-[10px] text-muted-foreground">{t.repScore}</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex flex-col items-center rounded-xl bg-green-50 dark:bg-green-950/20 p-3">
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500 mb-1" />
+                <p className="font-mono text-base font-bold text-green-600">{selectedUser.loansRepaid}</p>
+                <p className="text-[10px] text-muted-foreground">{t.repaid}</p>
+              </div>
+              <div className="flex flex-col items-center rounded-xl bg-red-50 dark:bg-red-950/20 p-3">
+                <AlertTriangle className="h-3.5 w-3.5 text-red-400 mb-1" />
+                <p className="font-mono text-base font-bold text-red-500">{selectedUser.loansDefaulted}</p>
+                <p className="text-[10px] text-muted-foreground">{t.defaulted}</p>
+              </div>
+            </div>
 
-          {/* Vouch Amount */}
-          <Card>
-            <CardContent className="pt-5">
-              <label className="mb-2 block text-sm font-medium">{t.vouchAmount}</label>
+            <Separator className="mb-4" />
+
+            {/* Amount input */}
+            <label className="mb-2 block text-sm font-medium">{t.vouchAmount}</label>
+            <div className="relative mb-1">
+              <CircleDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="number"
                 value={vouchAmount}
                 onChange={(e) => setVouchAmount(e.target.value)}
                 placeholder={`Min $${MIN_VOUCH_AMOUNT}`}
-                className="font-mono text-xl h-12"
+                className="font-mono text-xl h-13 pl-9"
                 min={MIN_VOUCH_AMOUNT}
               />
-              {parsedAmount > 0 && parsedAmount < MIN_VOUCH_AMOUNT && (
-                <p className="mt-1 text-xs text-red-500">Minimum vouch amount is ${MIN_VOUCH_AMOUNT}</p>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+            {parsedAmount > 0 && parsedAmount < MIN_VOUCH_AMOUNT && (
+              <p className="mb-2 text-xs text-red-500">{t.minVouchAmount} ${MIN_VOUCH_AMOUNT}</p>
+            )}
 
-          {/* Concentration Warning */}
-          {isAmountValid && exceedsConcentration && (
-            <div className="rounded-lg border border-orange-300 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-950/30">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-                <div>
-                  <p className="text-sm font-medium text-orange-700 dark:text-orange-400">
-                    Concentration Warning
-                  </p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400">
-                    Your vouch would be {concentrationPercent}% of this borrower&apos;s total. Max allowed is {MAX_CONCENTRATION_PERCENT}% {t.concentrationCap}.
-                  </p>
+            {/* Concentration Warning */}
+            {isAmountValid && exceedsConcentration && (
+              <div className="mt-3 rounded-xl border border-orange-300 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-950/30">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                      {t.concentrationWarning}
+                    </p>
+                    <p className="text-xs text-orange-600 dark:text-orange-400">
+                      {concentrationPercent}% — Max {MAX_CONCENTRATION_PERCENT}% {t.concentrationCap}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* 48h Activation Notice */}
-          <div className="rounded-lg border border-yellow-300/50 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950/30">
-            <div className="flex items-start gap-2">
-              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600" />
-              <div>
-                <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
-                  {t.activationNotice}
-                </p>
-                <p className="text-xs text-yellow-600 dark:text-yellow-500">
-                  {t.activationDesc}
-                </p>
+            {/* Activation notice */}
+            <div className="mt-4 flex items-center gap-2 rounded-xl bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 px-3 py-2.5">
+              <Clock className="h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+              <div className="flex-1">
+                <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">{t.activationNotice}</p>
               </div>
             </div>
-          </div>
 
-          {/* Confirm */}
-          <TxButton
-            onClick={handleConfirm}
-            loading={submitting}
-            disabled={!isAmountValid || exceedsConcentration}
-            className="w-full"
-          >
-            {t.confirmVouch}
-          </TxButton>
-        </>
+            {/* Confirm button */}
+            <TxButton
+              onClick={handleConfirm}
+              loading={submitting}
+              disabled={!isAmountValid || exceedsConcentration}
+              className="w-full mt-4"
+            >
+              <Shield className="h-4 w-4 mr-1.5" />
+              {t.confirmVouch}
+            </TxButton>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Empty state */}
-      {!selectedUser && filteredUsers.length === 0 && searchQuery.length >= 2 && (
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
-          <Search className="h-8 w-8 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">No users found</p>
-        </div>
-      )}
-
+      {/* Empty state - no search */}
       {!selectedUser && searchQuery.length < 2 && (
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
-          <Shield className="h-12 w-12 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">Search for a user to vouch for</p>
-          <p className="text-xs text-muted-foreground">Enter at least 2 characters</p>
-        </div>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-3 py-10">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10">
+              <Users className="h-7 w-7 text-emerald-500" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium">{t.searchForUser}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t.enterMin2Chars}</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
+
+      {/* Empty state - no results */}
+      {!selectedUser && filteredUsers.length === 0 && searchQuery.length >= 2 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-3 py-10">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+              <Search className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">{t.noUsersFound}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Info footer */}
+      <div className="rounded-xl bg-muted/40 border border-border/40 p-3">
+        <div className="flex items-start gap-2">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <p className="text-xs text-muted-foreground">
+            {t.activationDesc}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

@@ -46,3 +46,9 @@ out/
 # generated native folders
 /ios
 /android
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/lib/
+contracts/broadcast/

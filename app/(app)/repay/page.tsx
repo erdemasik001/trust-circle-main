@@ -50,12 +50,12 @@ export default function RepayPage() {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
         <CircleDollarSign className="h-16 w-16 text-muted-foreground/50" />
-        <h2 className="text-xl font-bold">No Active Loan</h2>
+        <h2 className="text-xl font-bold">{t.noActiveLoanTitle}</h2>
         <p className="text-center text-sm text-muted-foreground">
-          You don&apos;t have any active loans to repay.
+          {t.noActiveLoanDesc}
         </p>
         <Button onClick={() => router.push("/dashboard")} variant="outline">
-          Back to Dashboard
+          {t.backToDashboard}
         </Button>
       </div>
     );
@@ -85,9 +85,9 @@ export default function RepayPage() {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
         <CheckCircle2 className="h-16 w-16 text-green-500" />
-        <h2 className="text-xl font-bold">Payment Successful!</h2>
+        <h2 className="text-xl font-bold">{t.paymentSuccess}</h2>
         <p className="text-center text-sm text-muted-foreground">
-          Redirecting to dashboard...
+          {t.redirecting}
         </p>
       </div>
     );
@@ -108,7 +108,7 @@ export default function RepayPage() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
             <CircleDollarSign className="h-4 w-4 text-blue-500" />
-            Loan #{loan.id}
+            {t.loanId} #{loan.id}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -122,7 +122,7 @@ export default function RepayPage() {
               <span className="font-mono">${loan.totalDue.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Repaid</span>
+              <span className="text-muted-foreground">{t.repaid}</span>
               <span className="font-mono text-green-600">${loan.amountRepaid.toFixed(2)}</span>
             </div>
             <Separator />
@@ -131,7 +131,7 @@ export default function RepayPage() {
               <span className="font-mono">{dueDate.toLocaleDateString()}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Vouchers</span>
+              <span className="text-muted-foreground">{t.vouchers}</span>
               <span className="text-sm">{loan.vouchers.join(", ")}</span>
             </div>
 
@@ -140,7 +140,7 @@ export default function RepayPage() {
                 <ProgressIndicator className="bg-green-500" />
               </ProgressTrack>
             </Progress>
-            <p className="text-xs text-muted-foreground">{repaymentProgress}% repaid</p>
+            <p className="text-xs text-muted-foreground">{repaymentProgress}% {t.percentRepaid}</p>
           </div>
         </CardContent>
       </Card>
@@ -205,7 +205,7 @@ export default function RepayPage() {
           {submitting && paymentType === "full" ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
+              {t.processing}
             </>
           ) : (
             <>
@@ -216,7 +216,7 @@ export default function RepayPage() {
 
         <div className="flex items-center gap-3">
           <Separator className="flex-1" />
-          <span className="text-xs text-muted-foreground">or</span>
+          <span className="text-xs text-muted-foreground">{t.or}</span>
           <Separator className="flex-1" />
         </div>
 
@@ -234,13 +234,13 @@ export default function RepayPage() {
               max={totalBalance}
             />
             {parsedPartial > totalBalance && (
-              <p className="mt-1 text-xs text-red-500">Cannot exceed balance of ${totalBalance.toFixed(2)}</p>
+              <p className="mt-1 text-xs text-red-500">{t.cannotExceedBalance} (${totalBalance.toFixed(2)})</p>
             )}
             {parsedPartial < 0 && (
-              <p className="mt-1 text-xs text-red-500">Amount must be positive</p>
+              <p className="mt-1 text-xs text-red-500">{t.enterPositiveAmount}</p>
             )}
             {partialAmount !== "" && parsedPartial === 0 && (
-              <p className="mt-1 text-xs text-red-500">Enter an amount greater than 0</p>
+              <p className="mt-1 text-xs text-red-500">{t.enterGreaterThanZero}</p>
             )}
             <Button
               onClick={() => {
@@ -255,10 +255,10 @@ export default function RepayPage() {
               {submitting && paymentType === "partial" ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
+                  {t.processing}
                 </>
               ) : (
-                `Pay $${parsedPartial > 0 ? parsedPartial.toFixed(2) : "0.00"}`
+                `${t.pay} $${parsedPartial > 0 ? parsedPartial.toFixed(2) : "0.00"}`
               )}
             </Button>
           </CardContent>
@@ -270,7 +270,7 @@ export default function RepayPage() {
         <div className="flex items-start gap-2">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">
-            Repaying on time earns you +10 reputation points. Late repayment during grace period incurs a {LATE_FEE_PERCENT}% fee and -{LATE_FEE_PERCENT * 5} rep points.
+            {t.repayInfo}
           </p>
         </div>
       </div>

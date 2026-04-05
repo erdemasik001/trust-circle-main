@@ -37,6 +37,16 @@ export interface Loan {
 }
 
 export type SystemHealth = 'GREEN' | 'YELLOW' | 'RED' | 'RECOVERY';
+export type SystemHealthStatus = SystemHealth;
+
+export interface ActivityItem {
+  id: string;
+  type: 'repayment' | 'vouch_received' | 'vouch_given' | 'borrow' | 'rep_change';
+  description: string;
+  timestamp: string;
+  amount?: number;
+  repChange?: number;
+}
 
 export interface TrustSummary {
   user: User;

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useAccount, useReadContract } from "wagmi";
 import { CONTRACTS, CIRCUIT_BREAKER_ABI } from "@/lib/contracts";
-import { MOCK_SYSTEM_HEALTH, type SystemHealthStatus } from "@/constants/mock-data";
+import { type SystemHealthStatus } from "@/types";
 
 export interface UseCircuitBreakerReturn {
   health: SystemHealthStatus;
@@ -47,11 +47,11 @@ export function useCircuitBreaker(): UseCircuitBreakerReturn {
   return useMemo(() => {
     if (!isConnected || healthRaw === undefined) {
       return {
-        health: MOCK_SYSTEM_HEALTH.status,
+        health: "GREEN" as SystemHealthStatus,
         canCreateLoan: true,
-        activeLoans: MOCK_SYSTEM_HEALTH.activeLoansCount,
-        defaultRate: MOCK_SYSTEM_HEALTH.defaultRate,
-        isLoading: false,
+        activeLoans: 0,
+        defaultRate: 0,
+        isLoading: isConnected ? (healthLoading || canCreateLoading) : false,
       };
     }
 

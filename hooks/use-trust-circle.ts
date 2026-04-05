@@ -14,14 +14,7 @@ import {
 } from "@/lib/contracts";
 import { useTxFeedback } from "@/hooks/use-tx-feedback";
 import { useWalletAuth } from "@/contexts/wallet-auth-context";
-import { getTierForRep, getVoucherMultiplier } from "@/lib/tiers";
 import { VOUCH_ACTIVATION_DELAY_HOURS } from "@/lib/constants";
-import {
-  MOCK_USER,
-  MOCK_ACTIVE_LOAN,
-  MOCK_VOUCHES_RECEIVED,
-  MOCK_VOUCHES_GIVEN,
-} from "@/constants/mock-data";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -349,22 +342,7 @@ export function useTrustCircle(): UseTrustCircleReturn {
   // ── Parse on-chain data ───────────────────────────────
   const userProfile = useMemo<UserProfile | null>(() => {
     if (!isAuthenticated || !address) {
-      return {
-        address: MOCK_USER.address,
-        ensName: MOCK_USER.ensName,
-        reputationScore: MOCK_USER.reputationScore,
-        effectiveRep: MOCK_USER.reputationScore,
-        verified: MOCK_USER.verified,
-        isFrozen: MOCK_USER.reputationScore < 100,
-        memberSince: MOCK_USER.memberSince,
-        defaultCooldownUntil: MOCK_USER.defaultCooldownUntil,
-        activeVouchCount: MOCK_USER.activeVouchCount,
-        loansRepaid: MOCK_USER.loansRepaid,
-        loansDefaulted: MOCK_USER.loansDefaulted,
-        totalBorrowed: MOCK_USER.totalBorrowed,
-        totalVouched: MOCK_USER.totalVouched,
-        activeLoanId: 0,
-      };
+      return null;
     }
 
     if (!onChainProfile) return null;
@@ -398,7 +376,7 @@ export function useTrustCircle(): UseTrustCircleReturn {
 
   const activeLoan = useMemo<LoanData | null>(() => {
     if (!isAuthenticated || !onChainLoan) {
-      return MOCK_ACTIVE_LOAN;
+      return null;
     }
 
     const l = onChainLoan as unknown as ActiveLoanTuple;
@@ -429,32 +407,15 @@ export function useTrustCircle(): UseTrustCircleReturn {
 
   const availableLimit = useMemo<AvailableLimit>(() => {
     if (!isAuthenticated || !onChainLimit) {
-      // Use on-chain vouches if available, otherwise mock
-      const vouches = vouchesReceivedOnChain.length > 0
-        ? vouchesReceivedOnChain
-        : MOCK_VOUCHES_RECEIVED;
-      const rep = userProfile?.reputationScore ?? MOCK_USER.reputationScore;
-      const activeVouches = vouches.filter((v) => v.isActive);
-      const totalAvailable = activeVouches.reduce((sum, v) => {
-        const multiplier = getVoucherMultiplier(v.voucher.reputationScore);
-        return sum + (v.amount - v.usedAmount) * multiplier;
-      }, 0);
-      const tier = getTierForRep(rep);
-      const limit = Math.min(totalAvailable, tier.maxBorrow);
-      return { limit: Math.round(limit * 100) / 100, voucherCount: activeVouches.length };
+      return { limit: 0, voucherCount: 0 };
     }
     const [limit, voucherCount] = onChainLimit as unknown as [bigint, bigint];
     return { limit: Number(limit) / 1e6, voucherCount: Number(voucherCount) };
   }, [isAuthenticated, onChainLimit, vouchesReceivedOnChain, userProfile]);
 
-  // ── Resolved vouches: on-chain if available, mock fallback ──
-  const vouchesReceived = isAuthenticated && vouchesReceivedOnChain.length > 0
-    ? vouchesReceivedOnChain
-    : MOCK_VOUCHES_RECEIVED;
-
-  const vouchesGiven = isAuthenticated && vouchesGivenOnChain.length > 0
-    ? vouchesGivenOnChain
-    : MOCK_VOUCHES_GIVEN;
+  // ── Resolved vouches: on-chain only ──
+  const vouchesReceived = vouchesReceivedOnChain;
+  const vouchesGiven = vouchesGivenOnChain;
 
   // ── Actions ────────────────────────────────────────────
   const register = useCallback(async (proof: WorldIdProof) => {

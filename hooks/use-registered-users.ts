@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { usePublicClient } from "wagmi";
 import { CONTRACTS, TRUST_CIRCLE_ABI, TRUST_CIRCLE_ENS_ABI } from "@/lib/contracts";
-import { MOCK_SEARCHABLE_USERS } from "@/constants/mock-data";
 
 export interface RegisteredUser {
   address: string;
@@ -17,11 +16,11 @@ export interface RegisteredUser {
 /**
  * Reads UserRegistered events to build a searchable user directory.
  * For each registered address, fetches profile + ENS data.
- * Falls back to MOCK_SEARCHABLE_USERS if no on-chain users found.
+ * Returns empty array if no on-chain users found.
  */
 export function useRegisteredUsers() {
   const publicClient = usePublicClient();
-  const [users, setUsers] = useState<RegisteredUser[]>(MOCK_SEARCHABLE_USERS);
+  const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -39,7 +38,6 @@ export function useRegisteredUsers() {
         });
 
         if (events.length === 0) {
-          // No on-chain users, keep mock
           setIsLoading(false);
           return;
         }
@@ -86,7 +84,7 @@ export function useRegisteredUsers() {
         });
 
         const fetchedUsers = await Promise.all(userPromises);
-        setUsers(fetchedUsers.length > 0 ? fetchedUsers : MOCK_SEARCHABLE_USERS);
+        setUsers(fetchedUsers);
       } catch (err) {
         console.error("[RegisteredUsers] Error:", err);
         // Keep mock on error

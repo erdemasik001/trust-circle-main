@@ -178,7 +178,7 @@ export default function BorrowPage() {
                   max={availableCredit}
                 />
                 {parsedAmount > availableCredit && (
-                  <p className="mt-1 text-xs text-red-500">Exceeds available credit of ${availableCredit}</p>
+                  <p className="mt-1 text-xs text-red-500">{t.exceedsCredit} (${availableCredit})</p>
                 )}
 
                 {parsedAmount > 0 && parsedAmount <= availableCredit && (
@@ -245,7 +245,7 @@ export default function BorrowPage() {
             </Card>
 
             <Button onClick={() => setStep(3)} className="mt-4 w-full" size="lg" variant="destructive">
-              I understand, continue <ArrowRight className="ml-2 h-4 w-4" />
+              {t.iUnderstand} <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </motion.div>
         )}
@@ -256,14 +256,14 @@ export default function BorrowPage() {
             {submitted ? (
               <div className="flex flex-col items-center gap-4 py-12">
                 <CheckCircle2 className="h-16 w-16 text-green-500" />
-                <h2 className="text-xl font-bold">Borrow Successful!</h2>
-                <p className="text-sm text-muted-foreground">Redirecting to dashboard...</p>
+                <h2 className="text-xl font-bold">{t.borrowSuccess}</h2>
+                <p className="text-sm text-muted-foreground">{t.redirecting}</p>
               </div>
             ) : (
               <>
                 <Card>
                   <CardContent className="pt-5">
-                    <h3 className="mb-4 text-sm font-semibold">Confirm Your Loan</h3>
+                    <h3 className="mb-4 text-sm font-semibold">{t.confirmLoan}</h3>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{t.principal}</span>

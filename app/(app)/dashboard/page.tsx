@@ -16,7 +16,7 @@ import { useReputation } from "@/hooks/use-reputation";
 import { useInsurance } from "@/hooks/use-insurance";
 import { useCircuitBreaker } from "@/hooks/use-circuit-breaker";
 import { CountdownTimer } from "@/components/shared/countdown-timer";
-import { type ActivityItem } from "@/constants/mock-data";
+import { type ActivityItem } from "@/types";
 
 const activityIcons: Record<string, typeof Activity> = {
   repayment: CreditCard,
@@ -278,7 +278,7 @@ export default function DashboardPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 group-hover:bg-rose-500/20 transition-colors">
               <Gavel className="h-5 w-5 text-rose-500" />
             </div>
-            <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-400">Liquidate</span>
+            <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-400">{t.liquidate}</span>
           </div>
         </button>
       </div>
@@ -290,12 +290,12 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Gavel className="h-4 w-4 text-red-500" />
-                <span className="text-sm font-semibold">Liquidate Defaulted Loan</span>
+                <span className="text-sm font-semibold">{t.liquidateTitle}</span>
               </div>
-              <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowLiquidate(false)}>Close</Button>
+              <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowLiquidate(false)}>{t.close}</Button>
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
-              Enter the borrower address of a defaulted loan past grace period. You earn a liquidation bounty (1-5%).
+              {t.liquidateDesc}
             </p>
             <Input
               value={liquidateAddr}
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                 }
               }}
             >
-              {liquidating ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing...</> : "Liquidate"}
+              {liquidating ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{t.processing}</> : t.liquidate}
             </Button>
           </CardContent>
         </Card>

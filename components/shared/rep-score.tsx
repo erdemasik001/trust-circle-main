@@ -1,7 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-
 interface RepScoreProps {
   score: number;
   maxScore?: number;
@@ -30,7 +28,7 @@ export function RepScore({ score, maxScore = 1000 }: RepScoreProps) {
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-white/10"
+          className="text-white/15"
         />
         {/* Progress ring */}
         <circle
@@ -47,15 +45,14 @@ export function RepScore({ score, maxScore = 1000 }: RepScoreProps) {
         />
         <defs>
           <linearGradient id="repGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#60A5FA" />
-            <stop offset="100%" stopColor="#A78BFA" />
+            <stop offset="0%" stopColor="#93C5FD" />
+            <stop offset="100%" stopColor="#C4B5FD" />
           </linearGradient>
         </defs>
       </svg>
       <span
-        className={cn(
-          "absolute font-mono text-lg font-bold tracking-tight text-white"
-        )}
+        className="absolute font-mono text-lg font-bold tracking-tight"
+        style={{ color: "#FFFFFF", textShadow: "0 1px 4px rgba(0,0,0,0.35)" }}
       >
         {score}
       </span>

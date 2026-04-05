@@ -8,7 +8,6 @@ import { CONTRACTS, TRUST_CIRCLE_ENS_ABI } from "@/lib/contracts";
 import { useTxFeedback } from "@/hooks/use-tx-feedback";
 import { useWalletAuth } from "@/contexts/wallet-auth-context";
 import { worldChainSepolia } from "@/lib/chains";
-import { MOCK_USER } from "@/constants/mock-data";
 
 export interface UseENSReturn {
   ensName: string | null;
@@ -37,7 +36,7 @@ export function useENS(userAddress?: string): UseENSReturn {
 
   const ensName = useMemo(() => {
     if (!isAuthenticated || !ensProfile) {
-      return MOCK_USER.ensName;
+      return null;
     }
     const [, fullName, , hasSubname] = ensProfile as unknown as [string, string, string, boolean];
     return hasSubname ? fullName : null;
@@ -126,7 +125,6 @@ export function useENS(userAddress?: string): UseENSReturn {
 
   const resolve = useCallback(async (name: string): Promise<string | null> => {
     if (!isAuthenticated) {
-      if (name === MOCK_USER.ensName) return MOCK_USER.address;
       return null;
     }
     try {

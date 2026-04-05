@@ -11,6 +11,7 @@ export function WalletButton() {
     return (
       <Button variant="outline" size="sm" disabled className="gap-1.5 text-xs h-8">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <span className="sr-only">Loading</span>
       </Button>
     );
   }

@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { useAccount, useReadContract } from "wagmi";
 import { CONTRACTS, INSURANCE_POOL_ABI } from "@/lib/contracts";
-import { MOCK_SYSTEM_HEALTH } from "@/constants/mock-data";
 
 export interface UseInsuranceReturn {
   poolBalance: number;
@@ -26,11 +25,11 @@ export function useInsurance(): UseInsuranceReturn {
   return useMemo(() => {
     if (!isConnected || !stats) {
       return {
-        poolBalance: MOCK_SYSTEM_HEALTH.insurancePoolBalance,
-        totalContributions: MOCK_SYSTEM_HEALTH.totalInsuranceContributions,
-        totalPayouts: MOCK_SYSTEM_HEALTH.totalInsurancePayouts,
-        coverageRate: MOCK_SYSTEM_HEALTH.coverageRate,
-        isLoading: false,
+        poolBalance: 0,
+        totalContributions: 0,
+        totalPayouts: 0,
+        coverageRate: 0,
+        isLoading: isConnected ? isLoading : false,
       };
     }
 
