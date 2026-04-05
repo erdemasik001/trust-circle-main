@@ -15,13 +15,17 @@ export async function POST() {
 
     const rpSig = signRequest(ACTION, SIGNING_KEY, 300); // 5 min TTL
 
+    // Subtract 30s buffer to prevent "created_at in the future" clock skew errors
+    const createdAt = rpSig.createdAt - 30;
+    const expiresAt = rpSig.expiresAt - 30;
+
     return NextResponse.json({
       success: true,
       rp_context: {
         rp_id: process.env.WORLD_ID_RP_ID ?? process.env.WORLD_ID_APP_ID ?? "",
         nonce: rpSig.nonce,
-        created_at: rpSig.createdAt,
-        expires_at: rpSig.expiresAt,
+        created_at: createdAt,
+        expires_at: expiresAt,
         signature: rpSig.sig,
       },
     });
