@@ -45,6 +45,7 @@ function VerifyWithContext({
     action: ACTION,
     rp_context: rpContext,
     allow_legacy_proofs: true,
+    environment: "staging",
     preset: orbLegacy(),
   });
 
@@ -111,11 +112,15 @@ function VerifyWithContext({
         action={ACTION}
         rp_context={rpContext}
         allow_legacy_proofs={true}
+        environment="staging"
         preset={orbLegacy()}
         open={widgetOpen}
         onOpenChange={setWidgetOpen}
         onSuccess={handleSuccess}
-        onError={(errorCode) => onError?.(errorCode)}
+        onError={(errorCode) => {
+          console.error("[IDKit] Error:", errorCode);
+          onError?.(String(errorCode));
+        }}
       />
     </>
   );
