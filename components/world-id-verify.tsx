@@ -45,7 +45,7 @@ function VerifyWithContext({
     action: ACTION,
     rp_context: rpContext,
     allow_legacy_proofs: true,
-    environment: "staging",
+    environment: "production",
     preset: orbLegacy(),
   });
 
