@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useIDKitRequest, type IDKitResult } from "@worldcoin/idkit";
 import { orbLegacy } from "@worldcoin/idkit";
 import { Loader2, Shield, QrCode } from "lucide-react";
@@ -36,6 +36,14 @@ function VerifyWithContext({
   onError,
   buttonText = "Verify with World ID",
 }: WorldIdVerifyProps & { rpContext: RpContext }) {
+  // Use refs for callbacks to prevent re-render loops
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  const errorHandledRef = useRef(false);
+  const successHandledRef = useRef(false);
+
+  onSuccessRef.current = onSuccess;
+  onErrorRef.current = onError;
 
   const idkit = useIDKitRequest({
     app_id: APP_ID,
@@ -46,36 +54,23 @@ function VerifyWithContext({
     preset: orbLegacy(),
   });
 
-  // Log state changes for debugging
+  // Handle success - only once
   useEffect(() => {
-    console.log("[IDKit] State:", {
-      isOpen: idkit.isOpen,
-      isAwaitingUserConnection: idkit.isAwaitingUserConnection,
-      isAwaitingUserConfirmation: idkit.isAwaitingUserConfirmation,
-      isSuccess: idkit.isSuccess,
-      isError: idkit.isError,
-      errorCode: idkit.errorCode,
-      connectorURI: idkit.connectorURI ? "present" : "null",
-      isInWorldApp: idkit.isInWorldApp,
-    });
-  }, [idkit.isOpen, idkit.isAwaitingUserConnection, idkit.isAwaitingUserConfirmation, idkit.isSuccess, idkit.isError, idkit.errorCode, idkit.connectorURI, idkit.isInWorldApp]);
-
-  // Handle success
-  useEffect(() => {
-    if (idkit.isSuccess && idkit.result) {
-      console.log("[IDKit] Result:", JSON.stringify(idkit.result, null, 2));
+    if (idkit.isSuccess && idkit.result && !successHandledRef.current) {
+      successHandledRef.current = true;
+      console.log("[IDKit] Success:", JSON.stringify(idkit.result, null, 2));
       const result = idkit.result;
       if (result.responses?.[0]) {
         const resp = result.responses[0];
         if ("merkle_root" in resp) {
-          onSuccess({
+          onSuccessRef.current({
             merkle_root: resp.merkle_root,
             nullifier_hash: resp.nullifier,
             proof: typeof resp.proof === "string" ? resp.proof : "",
             verification_level: resp.identifier === "proof_of_human" ? "orb" : "device",
           });
         } else if ("nullifier" in resp) {
-          onSuccess({
+          onSuccessRef.current({
             merkle_root: Array.isArray(resp.proof) && resp.proof.length > 4 ? resp.proof[4] : "",
             nullifier_hash: resp.nullifier,
             proof: Array.isArray(resp.proof) ? resp.proof.slice(0, 4).join(",") : "",
@@ -84,24 +79,34 @@ function VerifyWithContext({
         }
       }
     }
-  }, [idkit.isSuccess, idkit.result, onSuccess]);
+  }, [idkit.isSuccess, idkit.result]);
 
-  // Handle error
+  // Handle error - only once
   useEffect(() => {
-    if (idkit.isError && idkit.errorCode) {
+    if (idkit.isError && idkit.errorCode && !errorHandledRef.current) {
+      errorHandledRef.current = true;
       console.error("[IDKit] Error:", idkit.errorCode);
-      onError?.(String(idkit.errorCode));
+      onErrorRef.current?.(String(idkit.errorCode));
     }
-  }, [idkit.isError, idkit.errorCode, onError]);
+  }, [idkit.isError, idkit.errorCode]);
+
+  // Debug log - only on meaningful changes
+  useEffect(() => {
+    console.log("[IDKit] connectorURI:", idkit.connectorURI ? "present" : "null");
+    console.log("[IDKit] isInWorldApp:", idkit.isInWorldApp);
+  }, [idkit.connectorURI, idkit.isInWorldApp]);
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <Button onClick={() => idkit.open()} className="w-full max-w-xs" size="lg">
+      <Button onClick={() => {
+        errorHandledRef.current = false;
+        successHandledRef.current = false;
+        idkit.open();
+      }} className="w-full max-w-xs" size="lg">
         <Shield className="mr-2 h-4 w-4" />
         {buttonText}
       </Button>
 
-      {/* Show QR code link for debugging */}
       {idkit.connectorURI && (
         <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white">
           <QrCode className="h-8 w-8 text-muted-foreground" />
@@ -125,7 +130,7 @@ function VerifyWithContext({
           {idkit.isAwaitingUserConfirmation && (
             <div className="flex items-center gap-2 text-xs text-green-600">
               <Loader2 className="h-3 w-3 animate-spin" />
-              World App'te onaylayın...
+              World App&apos;te onaylayın...
             </div>
           )}
         </div>
