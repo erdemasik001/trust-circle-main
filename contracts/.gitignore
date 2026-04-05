@@ -1,0 +1,22 @@
+# Foundry
+out/
+cache/
+broadcast/
+lib/
+
+# Frontend (future)
+node_modules/
+.next/
+.vercel/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
